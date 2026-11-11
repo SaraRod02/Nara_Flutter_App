@@ -8,6 +8,7 @@ import 'emotion_screen.dart';
 import 'settings_screen.dart';
 import 'trusted_contacts_screen.dart';
 import 'symptom_screen.dart';
+import 'trends_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -352,11 +353,19 @@ class _TrackingTab extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          _ComingSoonOption(
+          _HomeOption(
             palette: palette,
             icon: Icons.insights_outlined,
             title: 'Mis tendencias',
             description: 'Conoce tus patrones y evolución emocional.',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TrendsScreen(palette: palette),
+                ),
+              );
+            },
           ),
         ],
       ),
