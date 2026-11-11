@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../theme_controller.dart';
+import '../models/nara_user.dart';
+import '../models/nara_user_session.dart';
+
 import 'emotion_screen.dart';
 import 'settings_screen.dart';
+import 'trusted_contacts_screen.dart';
+import 'symptom_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -45,9 +50,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 tooltip: 'Cerrar sesión',
                 icon: const Icon(Icons.logout),
                 onPressed: () {
-                  Navigator.popUntil(
+                  NaraUserSession.clear();
+
+                  Navigator.pushNamedAndRemoveUntil(
                     context,
-                    (route) => route.isFirst,
+                    '/',
+                    (route) => false,
                   );
                 },
               ),
@@ -117,10 +125,7 @@ class _HomeTab extends StatelessWidget {
   final NaraPalette palette;
   final ValueChanged<int> onSelectTab;
 
-  const _HomeTab({
-    required this.palette,
-    required this.onSelectTab,
-  });
+  const _HomeTab({required this.palette, required this.onSelectTab});
 
   @override
   Widget build(BuildContext context) {
@@ -144,17 +149,12 @@ class _HomeTab extends StatelessWidget {
 
           Text(
             'Este es tu espacio. Ve a tu ritmo y date permiso de sentir.',
-            style: TextStyle(
-              fontSize: 15,
-              height: 1.5,
-              color: palette.text,
-            ),
+            style: TextStyle(fontSize: 15, height: 1.5, color: palette.text),
           ),
 
           const SizedBox(height: 28),
 
           // TARJETA DE LUMI
-
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -163,10 +163,7 @@ class _HomeTab extends StatelessWidget {
             ),
             child: Column(
               children: [
-                const Text(
-                  '☁️',
-                  style: TextStyle(fontSize: 62),
-                ),
+                const Text('☁️', style: TextStyle(fontSize: 62)),
 
                 const SizedBox(height: 10),
 
@@ -185,10 +182,7 @@ class _HomeTab extends StatelessWidget {
                   'Estoy aquí para acompañarte mientras aprendes '
                   'a escuchar tus emociones.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: palette.text,
-                    height: 1.5,
-                  ),
+                  style: TextStyle(color: palette.text, height: 1.5),
                 ),
               ],
             ),
@@ -215,9 +209,7 @@ class _HomeTab extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const EmotionScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const EmotionScreen()),
               );
             },
           ),
@@ -232,9 +224,7 @@ class _HomeTab extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const EmotionHistoryScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const EmotionHistoryScreen()),
               );
             },
           ),
@@ -259,7 +249,22 @@ class _HomeTab extends StatelessWidget {
             onTap: () => onSelectTab(3),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
+
+          _HomeOption(
+            palette: palette,
+            icon: Icons.people_alt_outlined,
+            title: 'Mi red de apoyo',
+            description: 'Conecta con personas de confianza.',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TrustedContactsScreen(palette: palette),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -295,10 +300,7 @@ class _TrackingTab extends StatelessWidget {
 
           Text(
             'Conoce tus emociones y registra cómo te encuentras.',
-            style: TextStyle(
-              color: palette.text,
-              height: 1.5,
-            ),
+            style: TextStyle(color: palette.text, height: 1.5),
           ),
 
           const SizedBox(height: 24),
@@ -311,20 +313,26 @@ class _TrackingTab extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const EmotionScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const EmotionScreen()),
               );
             },
           ),
 
           const SizedBox(height: 12),
 
-          _ComingSoonOption(
+          _HomeOption(
             palette: palette,
             icon: Icons.monitor_heart_outlined,
             title: 'Registrar síntomas',
             description: 'Identifica los síntomas físicos o emocionales.',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SymptomScreen(palette: palette),
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: 12),
@@ -337,9 +345,7 @@ class _TrackingTab extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const EmotionHistoryScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const EmotionHistoryScreen()),
               );
             },
           ),
@@ -375,11 +381,7 @@ class _DiaryTab extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.book_outlined,
-              size: 75,
-              color: palette.accent,
-            ),
+            Icon(Icons.book_outlined, size: 75, color: palette.accent),
 
             const SizedBox(height: 20),
 
@@ -398,10 +400,7 @@ class _DiaryTab extends StatelessWidget {
               'Este será un espacio privado para escribir '
               'tus pensamientos, experiencias y emociones.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: palette.text,
-                height: 1.5,
-              ),
+              style: TextStyle(color: palette.text, height: 1.5),
             ),
 
             const SizedBox(height: 18),
@@ -425,74 +424,302 @@ class _ProfileTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Mi espacio personal',
-            style: TextStyle(
-              fontSize: 23,
-              fontWeight: FontWeight.bold,
-              color: palette.accent,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            'Administra tu información y las preferencias de NARA.',
-            style: TextStyle(
-              color: palette.text,
-              height: 1.5,
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          _ComingSoonOption(
-            palette: palette,
-            icon: Icons.account_circle_outlined,
-            title: 'Mis datos personales',
-            description: 'Consulta y modifica tu perfil.',
-          ),
-
-          const SizedBox(height: 12),
-
-          _HomeOption(
-            palette: palette,
-            icon: Icons.palette_outlined,
-            title: 'Personalizar NARA',
-            description: 'Elige los colores de tu aplicación.',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const SettingsScreen(),
+    return ValueListenableBuilder<NaraUser?>(
+      valueListenable: NaraUserSession.currentUser,
+      builder: (context, user, child) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Mi espacio personal',
+                style: TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.bold,
+                  color: palette.accent,
                 ),
-              );
-            },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Administra tu información y las preferencias de NARA.',
+                style: TextStyle(color: palette.text, height: 1.5),
+              ),
+              const SizedBox(height: 24),
+
+              if (user != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: palette.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: palette.border),
+                  ),
+                  child: Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 42,
+                        backgroundColor: palette.iconBackground,
+                        child: Text(
+                          user.nombre.isNotEmpty
+                              ? user.nombre[0].toUpperCase()
+                              : '?',
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: palette.accent,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        user.nombre,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.bold,
+                          color: palette.text,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        user.correo,
+                        style: TextStyle(color: palette.mutedText),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: palette.iconBackground,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          user.tipoDescripcion,
+                          style: TextStyle(
+                            color: palette.accent,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                _HomeOption(
+                  palette: palette,
+                  icon: Icons.edit_outlined,
+                  title: 'Editar mis datos',
+                  description: 'Actualiza tu nombre y correo electrónico.',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            EditProfileScreen(user: user, palette: palette),
+                      ),
+                    );
+                  },
+                ),
+              ] else ...[
+                Card(
+                  color: palette.surface,
+                  child: const Padding(
+                    padding: EdgeInsets.all(18),
+                    child: Text(
+                      'No hay información de usuario disponible. '
+                      'Inicia sesión o crea una cuenta para consultar tu perfil.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 18),
+
+              _HomeOption(
+                palette: palette,
+                icon: Icons.palette_outlined,
+                title: 'Personalizar NARA',
+                description: 'Elige los colores de tu aplicación.',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 12),
+
+              _ComingSoonOption(
+                palette: palette,
+                icon: Icons.lock_outline,
+                title: 'Privacidad y permisos',
+                description: 'Administra el acceso a tu información.',
+              ),
+
+              const SizedBox(height: 12),
+
+              _ComingSoonOption(
+                palette: palette,
+                icon: Icons.notifications_outlined,
+                title: 'Recordatorios',
+                description: 'Configura tus notificaciones.',
+              ),
+            ],
           ),
+        );
+      },
+    );
+  }
+}
 
-          const SizedBox(height: 12),
+// --------------------------------------------------
+// EDITAR DATOS PERSONALES
+// --------------------------------------------------
 
-          _ComingSoonOption(
-            palette: palette,
-            icon: Icons.lock_outline,
-            title: 'Privacidad y permisos',
-            description: 'Administra el acceso a tu información.',
+class EditProfileScreen extends StatefulWidget {
+  final NaraUser user;
+  final NaraPalette palette;
+
+  const EditProfileScreen({
+    super.key,
+    required this.user,
+    required this.palette,
+  });
+
+  @override
+  State<EditProfileScreen> createState() => _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends State<EditProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  late final TextEditingController _nombreController;
+  late final TextEditingController _correoController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nombreController = TextEditingController(text: widget.user.nombre);
+    _correoController = TextEditingController(text: widget.user.correo);
+  }
+
+  @override
+  void dispose() {
+    _nombreController.dispose();
+    _correoController.dispose();
+    super.dispose();
+  }
+
+  void _guardarCambios() {
+    if (_formKey.currentState!.validate()) {
+      final usuarioActualizado = widget.user.copyWith(
+        nombre: _nombreController.text.trim(),
+        correo: _correoController.text.trim(),
+      );
+
+      NaraUserSession.updateUser(usuarioActualizado);
+
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = widget.palette;
+
+    return Scaffold(
+      backgroundColor: palette.background,
+      appBar: AppBar(
+        title: const Text('Editar perfil'),
+        backgroundColor: palette.surface,
+        foregroundColor: palette.text,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Actualiza tu información',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: palette.accent,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              TextFormField(
+                controller: _nombreController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre',
+                  prefixIcon: Icon(Icons.person_outline),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Escribe tu nombre.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 18),
+
+              TextFormField(
+                controller: _correoController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Correo electrónico',
+                  prefixIcon: Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null ||
+                      !RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(value.trim())) {
+                    return 'Ingresa un correo válido.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 18),
+
+              InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Tipo de cuenta',
+                  prefixIcon: Icon(Icons.badge_outlined),
+                  border: OutlineInputBorder(),
+                ),
+                child: Text(
+                  widget.user.tipoDescripcion,
+                  style: TextStyle(color: palette.text),
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _guardarCambios,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: palette.accent,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Guardar cambios'),
+                ),
+              ),
+            ],
           ),
-
-          const SizedBox(height: 12),
-
-          _ComingSoonOption(
-            palette: palette,
-            icon: Icons.notifications_outlined,
-            title: 'Recordatorios',
-            description: 'Configura tus notificaciones.',
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -538,19 +765,10 @@ class _HomeOption extends StatelessWidget {
         ),
         title: Text(
           title,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: palette.text,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: palette.text),
         ),
-        subtitle: Text(
-          description,
-          style: TextStyle(color: palette.mutedText),
-        ),
-        trailing: Icon(
-          Icons.chevron_right,
-          color: palette.accent,
-        ),
+        subtitle: Text(description, style: TextStyle(color: palette.mutedText)),
+        trailing: Icon(Icons.chevron_right, color: palette.accent),
         onTap: onTap,
       ),
     );
@@ -594,21 +812,12 @@ class _ComingSoonOption extends StatelessWidget {
         ),
         title: Text(
           title,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: palette.text,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: palette.text),
         ),
-        subtitle: Text(
-          description,
-          style: TextStyle(color: palette.mutedText),
-        ),
+        subtitle: Text(description, style: TextStyle(color: palette.mutedText)),
         trailing: Text(
           'Próximamente',
-          style: TextStyle(
-            fontSize: 11,
-            color: palette.mutedText,
-          ),
+          style: TextStyle(fontSize: 11, color: palette.mutedText),
         ),
       ),
     );
@@ -623,20 +832,14 @@ class _ComingSoonLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 9,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
       decoration: BoxDecoration(
         color: palette.iconBackground,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         'Próximamente',
-        style: TextStyle(
-          color: palette.accent,
-          fontWeight: FontWeight.bold,
-        ),
+        style: TextStyle(color: palette.accent, fontWeight: FontWeight.bold),
       ),
     );
   }
