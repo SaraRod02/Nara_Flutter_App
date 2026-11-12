@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'screens/login_screen.dart';
 import 'theme_controller.dart';
+//import 'database/nara_database.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const NaraApp());
 }
 

@@ -6,22 +6,26 @@ enum NaraUserType {
 }
 
 class NaraUser {
+  final int? idUsuario;
   final String nombre;
   final String correo;
   final NaraUserType tipo;
 
   NaraUser({
+    this.idUsuario,
     required this.nombre,
     required this.correo,
     required this.tipo,
   });
 
   NaraUser copyWith({
+    int? idUsuario,
     String? nombre,
     String? correo,
     NaraUserType? tipo,
   }) {
     return NaraUser(
+      idUsuario: idUsuario ?? this.idUsuario,
       nombre: nombre ?? this.nombre,
       correo: correo ?? this.correo,
       tipo: tipo ?? this.tipo,

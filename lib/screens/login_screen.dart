@@ -1,8 +1,10 @@
-
 import 'package:flutter/material.dart';
+
 import '../theme_controller.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
+import '../models/nara_user_session.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _contrasenaController = TextEditingController();
 
   bool _mostrarContrasena = false;
+  bool _cargando = false;
 
   @override
   void dispose() {
@@ -25,14 +28,42 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _iniciarSesion() {
-    if (_formKey.currentState!.validate()) {
+  Future<void> _iniciarSesion() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _cargando = true;
+    });
+
+    try {
+      final usuario = await AuthService.iniciarSesion(
+        correo: _correoController.text,
+        password: _contrasenaController.text,
+      );
+
+      if (!mounted) return;
+
+      NaraUserSession.setUser(usuario);
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => const HomeScreen(),
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.redAccent,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _cargando = false;
+        });
+      }
     }
   }
 
@@ -98,8 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
                         validator: (value) {
-                          if (value == null ||
-                              !value.contains('@')) {
+                          if (value == null || !value.contains('@')) {
                             return 'Ingresa un correo válido.';
                           }
                           return null;
@@ -121,15 +151,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             onPressed: () {
                               setState(() {
-                                _mostrarContrasena =
-                                    !_mostrarContrasena;
+                                _mostrarContrasena = !_mostrarContrasena;
                               });
                             },
                           ),
                         ),
                         validator: (value) {
-                          if (value == null ||
-                              value.length < 6) {
+                          if (value == null || value.length < 6) {
                             return 'Escribe al menos 6 caracteres.';
                           }
                           return null;
@@ -139,8 +167,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       SizedBox(
                         height: 52,
                         child: ElevatedButton(
-                          onPressed: _iniciarSesion,
-                          child: const Text('Iniciar sesión'),
+                          onPressed: _cargando ? null : _iniciarSesion,
+                          child: _cargando
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : const Text('Iniciar sesión'),
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -149,16 +181,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  const RegisterScreen(),
+                              builder: (_) => const RegisterScreen(),
                             ),
                           );
                         },
                         child: Text(
                           '¿No tienes cuenta? Regístrate',
-                          style: TextStyle(
-                            color: palette.accent,
-                          ),
+                          style: TextStyle(color: palette.accent),
                         ),
                       ),
                     ],

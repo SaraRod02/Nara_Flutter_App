@@ -1,8 +1,9 @@
-
 import 'package:flutter/material.dart';
+
 import '../models/nara_user.dart';
 import '../models/nara_user_session.dart';
 import 'home_screen.dart';
+import '../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,6 +17,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nombreController = TextEditingController();
   final _correoController = TextEditingController();
   final _contrasenaController = TextEditingController();
+  bool _cargando = false;
 
   NaraUserType _tipoSeleccionado = NaraUserType.usuarioPrincipal;
 
@@ -27,13 +29,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _registrarse() {
-    if (_formKey.currentState!.validate()) {
-      final usuario = NaraUser(
-        nombre: _nombreController.text.trim(),
-        correo: _correoController.text.trim(),
+  Future<void> _registrarse() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _cargando = true;
+    });
+
+    try {
+      final usuario = await AuthService.registrarUsuario(
+        nombre: _nombreController.text,
+        correo: _correoController.text,
+        password: _contrasenaController.text,
         tipo: _tipoSeleccionado,
       );
+
+      if (!mounted) return;
 
       NaraUserSession.setUser(usuario);
 
@@ -42,6 +55,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
         MaterialPageRoute(builder: (_) => const HomeScreen()),
         (route) => false,
       );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _cargando = false;
+        });
+      }
     }
   }
 
@@ -134,68 +162,65 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   const Text(
                     '¿Cómo utilizarás NARA?',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
 
-
-RadioGroup<NaraUserType>(
-  groupValue: _tipoSeleccionado,
-  onChanged: (value) {
-    if (value != null) {
-      setState(() {
-        _tipoSeleccionado = value;
-      });
-    }
-  },
-  child: Column(
-    children: [
-      RadioListTile<NaraUserType>(
-        value: NaraUserType.usuarioPrincipal,
-        title: const Text('Usuario principal'),
-        subtitle: const Text(
-          'Quiero registrar y dar seguimiento a mis emociones.',
-        ),
-      ),
-      RadioListTile<NaraUserType>(
-        value: NaraUserType.contactoConfianza,
-        title: const Text('Contacto de confianza'),
-        subtitle: const Text(
-          'Quiero acompañar a una persona de confianza.',
-        ),
-      ),
-      RadioListTile<NaraUserType>(
-        value: NaraUserType.profesional,
-        title: const Text('Profesional de apoyo'),
-        subtitle: const Text(
-          'Quiero brindar acompañamiento profesional.',
-        ),
-      ),
-    ],
-  ),
-),
-
+                  RadioGroup<NaraUserType>(
+                    groupValue: _tipoSeleccionado,
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _tipoSeleccionado = value;
+                        });
+                      }
+                    },
+                    child: Column(
+                      children: [
+                        RadioListTile<NaraUserType>(
+                          value: NaraUserType.usuarioPrincipal,
+                          title: const Text('Usuario principal'),
+                          subtitle: const Text(
+                            'Quiero registrar y dar seguimiento a mis emociones.',
+                          ),
+                        ),
+                        RadioListTile<NaraUserType>(
+                          value: NaraUserType.contactoConfianza,
+                          title: const Text('Contacto de confianza'),
+                          subtitle: const Text(
+                            'Quiero acompañar a una persona de confianza.',
+                          ),
+                        ),
+                        RadioListTile<NaraUserType>(
+                          value: NaraUserType.profesional,
+                          title: const Text('Profesional de apoyo'),
+                          subtitle: const Text(
+                            'Quiero brindar acompañamiento profesional.',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                   const SizedBox(height: 26),
 
                   SizedBox(
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: _registrarse,
+                      onPressed: _cargando ? null : _registrarse,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF9B83D5),
                         foregroundColor: Colors.white,
                       ),
-                      child: const Text('Crear mi cuenta'),
+                      child: _cargando
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text('Crear mi cuenta'),
                     ),
                   ),
 
                   const SizedBox(height: 12),
                   const Text(
-                    'Por ahora, la cuenta es de prueba y no se guarda permanentemente.',
+                    'Tu cuenta se guardará de forma segura en este dispositivo.',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),

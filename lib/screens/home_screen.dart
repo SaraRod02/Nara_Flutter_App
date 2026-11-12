@@ -9,6 +9,7 @@ import 'settings_screen.dart';
 import 'trusted_contacts_screen.dart';
 import 'symptom_screen.dart';
 import 'trends_screen.dart';
+import 'diary_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -384,41 +385,7 @@ class _DiaryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.book_outlined, size: 75, color: palette.accent),
-
-            const SizedBox(height: 20),
-
-            Text(
-              'Mi diario emocional',
-              style: TextStyle(
-                fontSize: 23,
-                fontWeight: FontWeight.bold,
-                color: palette.accent,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            Text(
-              'Este será un espacio privado para escribir '
-              'tus pensamientos, experiencias y emociones.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: palette.text, height: 1.5),
-            ),
-
-            const SizedBox(height: 18),
-
-            _ComingSoonLabel(palette: palette),
-          ],
-        ),
-      ),
-    );
+    return DiaryScreen(palette: palette);
   }
 }
 
@@ -828,27 +795,6 @@ class _ComingSoonOption extends StatelessWidget {
           'Próximamente',
           style: TextStyle(fontSize: 11, color: palette.mutedText),
         ),
-      ),
-    );
-  }
-}
-
-class _ComingSoonLabel extends StatelessWidget {
-  final NaraPalette palette;
-
-  const _ComingSoonLabel({required this.palette});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-      decoration: BoxDecoration(
-        color: palette.iconBackground,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        'Próximamente',
-        style: TextStyle(color: palette.accent, fontWeight: FontWeight.bold),
       ),
     );
   }
