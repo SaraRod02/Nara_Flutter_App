@@ -4,6 +4,11 @@ import 'screens/login_screen.dart';
 import 'theme_controller.dart';
 //import 'database/nara_database.dart';
 
+import 'models/nara_user.dart';
+import 'models/nara_user_session.dart';
+import 'services/auth_service.dart';
+import 'screens/home_screen.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const NaraApp());
@@ -84,7 +89,7 @@ class NaraApp extends StatelessWidget {
               ),
             ),
           ),
-          home: const WelcomeScreen(),
+          home: const SessionGate(),
         );
       },
     );
@@ -147,6 +152,68 @@ class WelcomeScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+class SessionGate extends StatefulWidget {
+  const SessionGate({super.key});
+
+  @override
+  State<SessionGate> createState() => _SessionGateState();
+}
+
+class _SessionGateState extends State<SessionGate> {
+  late Future<NaraUser?> _sessionFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _sessionFuture = _restoreSession();
+  }
+
+  Future<NaraUser?> _restoreSession() async {
+    final idUsuario = await NaraUserSession.getSavedUserId();
+
+    if (idUsuario == null) {
+      return null;
+    }
+
+    final usuario = await AuthService.obtenerUsuarioPorId(idUsuario);
+
+    if (usuario != null) {
+      await NaraUserSession.setUser(usuario);
+    } else {
+      await NaraUserSession.clear();
+    }
+
+    return usuario;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<NaraUser?>(
+      future: _sessionFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return const WelcomeScreen();
+        }
+
+        if (snapshot.data != null) {
+          return const HomeScreen();
+        }
+
+        return const WelcomeScreen();
+      },
     );
   }
 }

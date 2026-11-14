@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:cryptography/cryptography.dart';
-import 'package:flutter/foundation.dart';
 
 import '../database/nara_database.dart';
 import '../models/nara_user.dart';
@@ -121,7 +120,6 @@ class AuthService {
       limit: 1,
     );
 
-    debugPrint('LOGIN: usuarios encontrados = ${resultados.length}');
 
     if (resultados.isEmpty) {
       throw Exception('Correo o contraseña incorrectos.');
@@ -133,7 +131,6 @@ class AuthService {
 
     final passwordCorrecta = await _verificarHash(password, hashGuardado);
 
-    debugPrint('LOGIN: contraseña verificada = $passwordCorrecta');
 
     if (!passwordCorrecta) {
       throw Exception('Correo o contraseña incorrectos.');
@@ -153,4 +150,40 @@ class AuthService {
       tipo: tipo,
     );
   }
+
+  static Future<NaraUser?> obtenerUsuarioPorId(int idUsuario) async {
+    final db = await NaraDatabase.database;
+
+    final resultados = await db.query(
+      'usuario',
+      where: 'id_usuario = ? AND estado_cuenta = ?',
+      whereArgs: [idUsuario, 'activa'],
+      limit: 1,
+    );
+
+    if (resultados.isEmpty) {
+      return null;
+    }
+
+    final usuario = resultados.first;
+
+    final tipo = switch (usuario['rol']) {
+      'paciente' => NaraUserType.usuarioPrincipal,
+      'contacto_confianza' => NaraUserType.contactoConfianza,
+      'psicologo' => NaraUserType.profesional,
+      _ => null,
+    };
+
+    if (tipo == null) {
+      return null;
+    }
+
+    return NaraUser(
+      idUsuario: usuario['id_usuario'] as int,
+      nombre: usuario['nombre'] as String,
+      correo: usuario['correo'] as String,
+      tipo: tipo,
+    );
+  }
+
 }

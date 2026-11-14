@@ -51,8 +51,10 @@ class _HomeScreenState extends State<HomeScreen> {
               IconButton(
                 tooltip: 'Cerrar sesión',
                 icon: const Icon(Icons.logout),
-                onPressed: () {
-                  NaraUserSession.clear();
+                onPressed: () async {
+                  await NaraUserSession.clear();
+
+                  if (!context.mounted) return;
 
                   Navigator.pushNamedAndRemoveUntil(
                     context,

@@ -48,7 +48,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!mounted) return;
 
-      NaraUserSession.setUser(usuario);
+      await NaraUserSession.setUser(usuario);
+
+      if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(
         context,

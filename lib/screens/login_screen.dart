@@ -43,7 +43,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      NaraUserSession.setUser(usuario);
+      await NaraUserSession.setUser(usuario);
+
+      if (!mounted) return;
 
       Navigator.pushReplacement(
         context,
