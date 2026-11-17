@@ -7,7 +7,7 @@ import 'theme_controller.dart';
 import 'models/nara_user.dart';
 import 'models/nara_user_session.dart';
 import 'services/auth_service.dart';
-import 'screens/home_screen.dart';
+import 'role_router.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -209,7 +209,7 @@ class _SessionGateState extends State<SessionGate> {
         }
 
         if (snapshot.data != null) {
-          return const HomeScreen();
+          return pantallaSegunRol(snapshot.data!);
         }
 
         return const WelcomeScreen();

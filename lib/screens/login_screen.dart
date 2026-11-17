@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme_controller.dart';
 import 'register_screen.dart';
-import 'home_screen.dart';
+import '../role_router.dart';
 import '../models/nara_user_session.dart';
 import '../services/auth_service.dart';
 
@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => pantallaSegunRol(usuario)),
       );
     } catch (error) {
       if (!mounted) return;

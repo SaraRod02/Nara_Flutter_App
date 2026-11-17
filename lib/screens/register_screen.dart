@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/nara_user.dart';
 import '../models/nara_user_session.dart';
-import 'home_screen.dart';
+import '../role_router.dart';
 import '../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -46,6 +46,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         tipo: _tipoSeleccionado,
       );
 
+      debugPrint('ROL SELECCIONADO: $_tipoSeleccionado');
+      debugPrint('ROL DEVUELTO: ${usuario.tipo}');
+      debugPrint('USUARIO CREADO: ${usuario.idUsuario}');
+
       if (!mounted) return;
 
       await NaraUserSession.setUser(usuario);
@@ -54,7 +58,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => pantallaSegunRol(usuario)),
         (route) => false,
       );
     } catch (error) {

@@ -41,17 +41,21 @@ class NaraDatabase {
 
     return await openDatabase(
       dbPath,
-      version: 2,
+      version: 3,
 
-      // Desactivamos temporalmente las llaves foráneas
-      // mientras reconstruimos las tablas.
+      // Desactivar temporalmente las llaves foráneas
+      // durante la reconstrucción de las tablas.
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = OFF');
       },
 
       onUpgrade: (db, oldVersion, newVersion) async {
+        // ==========================================
+        // MIGRACIÓN 1 -> 2
+        // ==========================================
+
         if (oldVersion < 2) {
-          // 1. Crear la nueva tabla de usuarios.
+          // 1. Actualizar la tabla de usuarios.
           await db.execute('''
             CREATE TABLE usuario_nuevo (
               id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -159,9 +163,73 @@ class NaraDatabase {
             )
           ''');
         }
+
+        // ==========================================
+        // MIGRACIÓN 2 -> 3
+        // ==========================================
+
+        if (oldVersion < 3) {
+          // 1. Reconstruir contacto_confianza.
+          // Ahora un mismo código puede utilizarse
+          // en varias solicitudes.
+          await db.execute('''
+            CREATE TABLE contacto_confianza_nueva (
+              id_vinculacion INTEGER PRIMARY KEY AUTOINCREMENT,
+              id_usuario_principal INTEGER NOT NULL,
+              id_usuario_contacto INTEGER NOT NULL,
+              codigo_vinculacion TEXT NOT NULL,
+              estado TEXT NOT NULL DEFAULT 'pendiente'
+                CHECK (estado IN (
+                  'pendiente',
+                  'aceptada',
+                  'rechazada',
+                  'revocada'
+                )),
+              puede_recibir_alertas INTEGER NOT NULL DEFAULT 1
+                CHECK (puede_recibir_alertas IN (0, 1)),
+              fecha_solicitud TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              fecha_respuesta TEXT,
+              FOREIGN KEY (id_usuario_principal)
+                REFERENCES usuario(id_usuario),
+              FOREIGN KEY (id_usuario_contacto)
+                REFERENCES usuario(id_usuario),
+              CHECK (
+                id_usuario_principal <> id_usuario_contacto
+              ),
+              UNIQUE (
+                id_usuario_principal,
+                id_usuario_contacto
+              )
+            )
+          ''');
+
+          await db.execute('''
+            INSERT INTO contacto_confianza_nueva
+            SELECT * FROM contacto_confianza
+          ''');
+
+          await db.execute('DROP TABLE contacto_confianza');
+
+          await db.execute('''
+            ALTER TABLE contacto_confianza_nueva
+            RENAME TO contacto_confianza
+          ''');
+
+          // 2. Crear la tabla independiente de códigos.
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS codigo_invitacion (
+              id_codigo INTEGER PRIMARY KEY AUTOINCREMENT,
+              id_usuario_principal INTEGER NOT NULL UNIQUE,
+              codigo TEXT NOT NULL UNIQUE,
+              fecha_creacion TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (id_usuario_principal)
+                REFERENCES usuario(id_usuario)
+            )
+          ''');
+        }
       },
 
-      // Reactivar las llaves foráneas después de la migración.
+      // Reactivar las llaves foráneas.
       onOpen: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
