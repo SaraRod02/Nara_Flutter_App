@@ -40,6 +40,7 @@ dependencies:
   cryptography: ^2.9.0
   cryptography_flutter: ^2.3.4
   shared_preferences: ^2.5.6
+  flutter_3d_controller: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -66,6 +67,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
   - assets/database/nara.db
+  - assets/models/lumi_animado.glb
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

@@ -10,6 +10,7 @@ import 'trusted_contacts_screen.dart';
 import 'symptom_screen.dart';
 import 'trends_screen.dart';
 import 'diary_screen.dart';
+import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +21,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+
+  final Flutter3DController _lumiController = Flutter3DController();
 
   final List<String> _titles = [
     'NARA',
@@ -71,6 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _HomeTab(
                 palette: palette,
+                lumiController: _lumiController,
                 onSelectTab: (index) {
                   setState(() {
                     _selectedIndex = index;
@@ -128,8 +132,9 @@ class _HomeScreenState extends State<HomeScreen> {
 class _HomeTab extends StatelessWidget {
   final NaraPalette palette;
   final ValueChanged<int> onSelectTab;
+  final Flutter3DController lumiController;
 
-  const _HomeTab({required this.palette, required this.onSelectTab});
+  const _HomeTab({required this.palette, required this.onSelectTab, required this.lumiController,});
 
   @override
   Widget build(BuildContext context) {
@@ -165,31 +170,44 @@ class _HomeTab extends StatelessWidget {
               color: palette.secondary,
               borderRadius: BorderRadius.circular(24),
             ),
-            child: Column(
-              children: [
-                const Text('☁️', style: TextStyle(fontSize: 62)),
+         child: Column(
+  children: [
+    SizedBox(
+      height: 180,
+      width: 180,
+      child: Flutter3DViewer(
+        controller: lumiController,
+        src: 'assets/models/lumi_animado.glb',
+        onLoad: (modelAddress) {
+          lumiController.playAnimation(loopCount: 0);
+        },
+        onError: (error) {
+          debugPrint('Error al cargar Lumi: $error');
+        },
+      ),
+    ),
 
-                const SizedBox(height: 10),
+    const SizedBox(height: 10),
 
-                Text(
-                  '¡Hola! Soy LUMI',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: palette.accent,
-                  ),
-                ),
+    Text(
+      '¡Hola! Soy LUMI',
+      style: TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.bold,
+        color: palette.accent,
+      ),
+    ),
 
-                const SizedBox(height: 8),
+    const SizedBox(height: 8),
 
-                Text(
-                  'Estoy aquí para acompañarte mientras aprendes '
-                  'a escuchar tus emociones.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: palette.text, height: 1.5),
-                ),
-              ],
-            ),
+    Text(
+      'Estoy aquí para acompañarte mientras aprendes '
+      'a escuchar tus emociones.',
+      textAlign: TextAlign.center,
+      style: TextStyle(color: palette.text, height: 1.5),
+    ),
+  ],
+),
           ),
 
           const SizedBox(height: 28),
