@@ -1,33 +1,154 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../models/trusted_contact.dart';
+import '../models/nara_user_session.dart';
 import '../models/trusted_contact_store.dart';
+import '../services/trusted_contact_service.dart';
 import '../theme_controller.dart';
 import 'enter_contact_code_screen.dart';
 
-class TrustedContactsScreen extends StatelessWidget {
+class TrustedContactsScreen extends StatefulWidget {
   final NaraPalette palette;
 
   const TrustedContactsScreen({super.key, required this.palette});
 
-  void _copyCode(BuildContext context, String code) {
-    Clipboard.setData(ClipboardData(text: code));
+  @override
+  State<TrustedContactsScreen> createState() => _TrustedContactsScreenState();
+}
+
+class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
+  List<Map<String, Object?>> _pendingRequests = [];
+  List<Map<String, Object?>> _linkedContacts = [];
+
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  NaraPalette get palette => widget.palette;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final user = NaraUserSession.currentUser.value;
+
+    if (user?.idUsuario == null) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'No se encontró una sesión activa.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await TrustedContactStore.loadCode();
+
+      final requests =
+          await TrustedContactService.getPendingRequests(user!.idUsuario!);
+
+      final contacts =
+          await TrustedContactService.getLinkedContacts(user.idUsuario!);
+
+      if (!mounted) return;
+
+      setState(() {
+        _pendingRequests = requests;
+        _linkedContacts = contacts;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'No se pudo cargar tu red de apoyo.';
+      });
+    }
+  }
+
+  Future<void> _copyCode(String code) async {
+    await Clipboard.setData(ClipboardData(text: code));
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Código copiado al portapapeles 💜')),
     );
   }
 
-  void _showDemoRequest(BuildContext context) {
-    TrustedContactStore.addDemoRequest(
-      nombre: 'Alex',
-      correo: 'alex@example.com',
+  Future<void> _renewCode() async {
+    try {
+      await TrustedContactStore.renewCode();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tu código se renovó correctamente.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo renovar el código.')),
+      );
+    }
+  }
+
+  Future<void> _respondToRequest(
+    Map<String, Object?> request,
+    String status,
+  ) async {
+    final user = NaraUserSession.currentUser.value;
+    final requestId = request['id_vinculacion'] as int?;
+
+    if (user?.idUsuario == null || requestId == null) return;
+
+    try {
+      await TrustedContactService.respondToRequest(
+        requestId: requestId,
+        principalId: user!.idUsuario!,
+        status: status,
+      );
+
+      await _loadData();
+
+      if (!mounted) return;
+
+      final message = status == 'aceptada'
+          ? 'Contacto agregado a tu red de apoyo 💜'
+          : 'Solicitud rechazada.';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo actualizar la solicitud. Inténtalo de nuevo.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openCodeScreen() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EnterContactCodeScreen(palette: palette),
+      ),
     );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Solicitud de prueba agregada.')),
-    );
+    if (!mounted) return;
+    await _loadData();
   }
 
   @override
@@ -38,6 +159,13 @@ class TrustedContactsScreen extends StatelessWidget {
         title: const Text('Mi red de apoyo'),
         backgroundColor: palette.surface,
         foregroundColor: palette.text,
+        actions: [
+          IconButton(
+            onPressed: _loadData,
+            tooltip: 'Actualizar',
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(22),
@@ -47,19 +175,18 @@ class TrustedContactsScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => EnterContactCodeScreen(palette: palette),
-                  ),
-                );
-              },
+              onPressed: _openCodeScreen,
               icon: const Icon(Icons.vpn_key_outlined),
               label: const Text('Tengo un código de invitación'),
             ),
-            Icon(Icons.people_alt_outlined, size: 65, color: palette.accent),
+
+            Icon(
+              Icons.people_alt_outlined,
+              size: 65,
+              color: palette.accent,
+            ),
             const SizedBox(height: 12),
+
             Text(
               'Puedes con todo, pero no con todo al mismo tiempo',
               textAlign: TextAlign.center,
@@ -70,14 +197,16 @@ class TrustedContactsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
+
             Text(
-              'Conecta con personas de confianza que puedan acompañarte cuando lo necesites, ten la oportunidad de buscar apoyo con las personas que te quieren.',
+              'Conecta con personas de confianza que puedan acompañarte '
+              'cuando lo necesites. También puedes buscar apoyo en las '
+              'personas que te quieren.',
               textAlign: TextAlign.center,
               style: TextStyle(color: palette.text, height: 1.5),
             ),
             const SizedBox(height: 28),
 
-            // CÓDIGO DE VINCULACIÓN
             _sectionTitle('Tu código de vinculación'),
 
             ValueListenableBuilder<String>(
@@ -112,7 +241,9 @@ class TrustedContactsScreen extends StatelessWidget {
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () => _copyCode(context, code),
+                              onPressed: code == '------'
+                                  ? null
+                                  : () => _copyCode(code),
                               icon: const Icon(Icons.copy),
                               label: const Text('Copiar'),
                             ),
@@ -120,7 +251,7 @@ class TrustedContactsScreen extends StatelessWidget {
                           const SizedBox(width: 10),
                           Expanded(
                             child: ElevatedButton.icon(
-                              onPressed: TrustedContactStore.renewCode,
+                              onPressed: _renewCode,
                               icon: const Icon(Icons.refresh),
                               label: const Text('Nuevo código'),
                               style: ElevatedButton.styleFrom(
@@ -139,147 +270,118 @@ class TrustedContactsScreen extends StatelessWidget {
 
             const SizedBox(height: 28),
 
-            // SOLICITUDES
             _sectionTitle('Solicitudes recibidas'),
 
-            ValueListenableBuilder<List<ContactRequest>>(
-              valueListenable: TrustedContactStore.requests,
-              builder: (context, requests, child) {
-                final pendingRequests = requests
-                    .where(
-                      (request) =>
-                          request.estado == ContactRequestStatus.pendiente,
-                    )
-                    .toList();
+            if (_isLoading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (_errorMessage != null)
+              _emptyCard(_errorMessage!, Icons.error_outline)
+            else if (_pendingRequests.isEmpty)
+              _emptyCard(
+                'No tienes solicitudes pendientes.',
+                Icons.mark_email_read_outlined,
+              )
+            else
+              ..._pendingRequests.map((request) {
+                final nombre = request['nombre']?.toString() ?? 'Sin nombre';
+                final correo = request['correo']?.toString() ?? '';
 
-                if (pendingRequests.isEmpty) {
-                  return _emptyCard(
-                    'No tienes solicitudes pendientes.',
-                    Icons.mark_email_read_outlined,
-                  );
-                }
-
-                return Column(
-                  children: pendingRequests.map((request) {
-                    return Card(
-                      color: palette.surface,
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                return Card(
+                  color: palette.surface,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          nombre,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: palette.text,
+                            fontSize: 17,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          correo,
+                          style: TextStyle(color: palette.mutedText),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
                           children: [
-                            Text(
-                              request.nombre,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: palette.text,
-                                fontSize: 17,
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () =>
+                                    _respondToRequest(request, 'rechazada'),
+                                child: const Text('Rechazar'),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              request.correo,
-                              style: TextStyle(color: palette.mutedText),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: () {
-                                      TrustedContactStore.respondToRequest(
-                                        request,
-                                        ContactRequestStatus.rechazada,
-                                      );
-                                    },
-                                    child: const Text('Rechazar'),
-                                  ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () =>
+                                    _respondToRequest(request, 'aceptada'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: palette.accent,
+                                  foregroundColor: Colors.white,
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      TrustedContactStore.respondToRequest(
-                                        request,
-                                        ContactRequestStatus.aceptada,
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: palette.accent,
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    child: const Text('Aceptar'),
-                                  ),
-                                ),
-                              ],
+                                child: const Text('Aceptar'),
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      ],
+                    ),
+                  ),
                 );
-              },
-            ),
+              }),
 
             const SizedBox(height: 28),
 
-            // CONTACTOS VINCULADOS
             _sectionTitle('Mis contactos'),
 
-            ValueListenableBuilder<List<TrustedContact>>(
-              valueListenable: TrustedContactStore.contacts,
-              builder: (context, contacts, child) {
-                if (contacts.isEmpty) {
-                  return _emptyCard(
-                    'Todavía no tienes contactos vinculados.',
-                    Icons.people_outline,
-                  );
-                }
+            if (_isLoading)
+              const SizedBox.shrink()
+            else if (_linkedContacts.isEmpty)
+              _emptyCard(
+                'Todavía no tienes contactos vinculados.',
+                Icons.people_outline,
+              )
+            else
+              ..._linkedContacts.map((contact) {
+                final nombre =
+                    contact['nombre']?.toString() ?? 'Sin nombre';
+                final correo = contact['correo']?.toString() ?? '';
 
-                return Column(
-                  children: contacts.map((contact) {
-                    return Card(
-                      color: palette.surface,
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: palette.iconBackground,
-                          child: Icon(Icons.person, color: palette.accent),
-                        ),
-                        title: Text(
-                          contact.nombre,
-                          style: TextStyle(color: palette.text),
-                        ),
-                        subtitle: Text(
-                          contact.correo,
-                          style: TextStyle(color: palette.mutedText),
-                        ),
-                        trailing: Icon(
-                          Icons.check_circle,
-                          color: palette.accent,
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                return Card(
+                  color: palette.surface,
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: palette.iconBackground,
+                      child: Icon(Icons.person, color: palette.accent),
+                    ),
+                    title: Text(
+                      nombre,
+                      style: TextStyle(color: palette.text),
+                    ),
+                    subtitle: Text(
+                      correo,
+                      style: TextStyle(color: palette.mutedText),
+                    ),
+                    trailing: Icon(
+                      Icons.check_circle,
+                      color: palette.accent,
+                    ),
+                  ),
                 );
-              },
-            ),
+              }),
 
             const SizedBox(height: 28),
-
-            // BOTÓN TEMPORAL PARA PROBAR
-            OutlinedButton.icon(
-              onPressed: () => _showDemoRequest(context),
-              icon: const Icon(Icons.science_outlined),
-              label: const Text('Simular solicitud de prueba'),
-            ),
-
-            const SizedBox(height: 8),
-            Text(
-              'La simulación es únicamente para probar la interfaz.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: palette.mutedText),
-            ),
           ],
         ),
       ),

@@ -71,6 +71,17 @@ class NaraThemeController {
       iconBackground: Color(0xFFE0EAFA),
       border: Color(0xFFCDDCF3),
     ),
+    NaraPalette(
+      name: 'Amarillo',
+      accent: const Color(0xFFF4C95D),
+      background: Color(0xFFFFFCF2),
+      surface: Color(0xFFFFFFFF),
+      secondary: Color(0xFFFFF0B8),
+      text: Color(0xFF40351F),
+      mutedText: Color(0xFF887F68),
+      iconBackground: Color(0xFFFFF0B8),
+      border: Color(0xFFEDE2C1),
+    ),
   ];
 
   static final ValueNotifier<NaraPalette> current =

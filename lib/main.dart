@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'screens/login_screen.dart';
 import 'theme_controller.dart';
-//import 'database/nara_database.dart';
+import 'database/nara_database.dart';
 
 import 'models/nara_user.dart';
 import 'models/nara_user_session.dart';
@@ -156,7 +156,6 @@ class WelcomeScreen extends StatelessWidget {
   }
 }
 
-
 class SessionGate extends StatefulWidget {
   const SessionGate({super.key});
 
@@ -167,6 +166,47 @@ class SessionGate extends StatefulWidget {
 class _SessionGateState extends State<SessionGate> {
   late Future<NaraUser?> _sessionFuture;
 
+  Future<void> _inspeccionarBaseDatos() async {
+    final db = await NaraDatabase.database;
+
+    final version = await db.rawQuery('PRAGMA user_version');
+
+    debugPrint('========== BASE DE DATOS NARA ==========');
+    debugPrint('VERSIÓN: $version');
+
+    final tablas = await db.rawQuery('''
+    SELECT name
+    FROM sqlite_master
+    WHERE type = 'table'
+    AND name NOT LIKE 'sqlite_%'
+    ORDER BY name
+  ''');
+
+    for (final fila in tablas) {
+      final nombre = fila['name'] as String;
+
+      debugPrint('\n========== TABLA: $nombre ==========');
+
+      final columnas = await db.rawQuery('PRAGMA table_info("$nombre")');
+
+      debugPrint('COLUMNAS:');
+      for (final columna in columnas) {
+        debugPrint('$columna');
+      }
+
+      final relaciones = await db.rawQuery(
+        'PRAGMA foreign_key_list("$nombre")',
+      );
+
+      debugPrint('CLAVES FORÁNEAS:');
+      for (final relacion in relaciones) {
+        debugPrint('$relacion');
+      }
+    }
+
+    debugPrint('========== FIN DE INSPECCIÓN ==========');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -174,6 +214,7 @@ class _SessionGateState extends State<SessionGate> {
   }
 
   Future<NaraUser?> _restoreSession() async {
+    await _inspeccionarBaseDatos();
     final idUsuario = await NaraUserSession.getSavedUserId();
 
     if (idUsuario == null) {
@@ -198,14 +239,25 @@ class _SessionGateState extends State<SessionGate> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
 
         if (snapshot.hasError) {
-          return const WelcomeScreen();
+          debugPrint('ERROR AL RESTAURAR SESIÓN: ${snapshot.error}');
+          debugPrint('${snapshot.stackTrace}');
+
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Ocurrió un error al iniciar NARA:\n${snapshot.error}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          );
         }
 
         if (snapshot.data != null) {

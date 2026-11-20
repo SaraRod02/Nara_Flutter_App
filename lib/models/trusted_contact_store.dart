@@ -1,7 +1,10 @@
 
 import 'package:flutter/foundation.dart';
 
+import 'nara_user.dart';
+import 'nara_user_session.dart';
 import 'trusted_contact.dart';
+import '../services/trusted_contact_service.dart';
 
 enum InvitationCodeResult {
   success,
@@ -11,47 +14,63 @@ enum InvitationCodeResult {
 }
 
 class TrustedContactStore {
-  // Código que el usuario puede compartir.
   static final ValueNotifier<String> invitationCode =
-      ValueNotifier<String>(TrustedContactCode.generate());
+      ValueNotifier<String>('------');
 
-  // Contactos vinculados.
   static final ValueNotifier<List<TrustedContact>> contacts =
       ValueNotifier<List<TrustedContact>>([]);
 
-  // Solicitudes recibidas.
   static final ValueNotifier<List<ContactRequest>> requests =
       ValueNotifier<List<ContactRequest>>([]);
 
-  // Generar un nuevo código.
-  static void renewCode() {
-    invitationCode.value = TrustedContactCode.generate();
+  // Cargar o recuperar el código del usuario principal.
+  static Future<void> loadCode() async {
+    final user = NaraUserSession.currentUser.value;
+
+    if (user == null ||
+        user.tipo != NaraUserType.usuarioPrincipal ||
+        user.idUsuario == null) {
+      return;
+    }
+
+    invitationCode.value =
+        await TrustedContactService.getOrCreateCode(user.idUsuario!);
   }
 
-  // Simular una solicitud recibida para probar la aplicación.
+  // Generar un nuevo código y guardarlo en SQLite.
+  static Future<void> renewCode() async {
+    final user = NaraUserSession.currentUser.value;
+
+    if (user == null ||
+        user.tipo != NaraUserType.usuarioPrincipal ||
+        user.idUsuario == null) {
+      return;
+    }
+
+    invitationCode.value =
+        await TrustedContactService.renewCode(user.idUsuario!);
+  }
+
+  // Función temporal de demostración.
+  // La retiraremos cuando conectemos las solicitudes reales.
   static void addDemoRequest({
     required String nombre,
     required String correo,
   }) {
-    final alreadyExists = requests.value.any(
-      (request) => request.correo == correo,
-    );
-
-    final alreadyContact = contacts.value.any(
-      (contact) => contact.correo == correo,
-    );
+    final alreadyExists =
+        requests.value.any((r) => r.correo == correo);
+    final alreadyContact =
+        contacts.value.any((c) => c.correo == correo);
 
     if (alreadyExists || alreadyContact) return;
 
-    final newRequest = ContactRequest(
-      nombre: nombre,
-      correo: correo,
-    );
-
-    requests.value = [...requests.value, newRequest];
+    requests.value = [
+      ...requests.value,
+      ContactRequest(nombre: nombre, correo: correo),
+    ];
   }
 
-  // Aceptar o rechazar una solicitud.
+  // Función temporal de demostración.
   static void respondToRequest(
     ContactRequest request,
     ContactRequestStatus status,
@@ -59,13 +78,14 @@ class TrustedContactStore {
     final updatedRequest = request.copyWith(estado: status);
 
     requests.value = requests.value.map((item) {
-      return item.correo == request.correo ? updatedRequest : item;
+      return item.correo == request.correo
+          ? updatedRequest
+          : item;
     }).toList();
 
     if (status == ContactRequestStatus.aceptada) {
-      final alreadyExists = contacts.value.any(
-        (contact) => contact.correo == request.correo,
-      );
+      final alreadyExists =
+          contacts.value.any((c) => c.correo == request.correo);
 
       if (!alreadyExists) {
         contacts.value = [
@@ -78,44 +98,37 @@ class TrustedContactStore {
       }
     }
   }
-    // Enviar solicitud usando un código de invitación.
-  static InvitationCodeResult requestByCode({
+
+  static Future<InvitationCodeResult> requestByCode({
     required String code,
     required String nombre,
     required String correo,
-  }) {
-    // Comprobar que el código sea correcto.
-    if (code != invitationCode.value) {
+  }) async {
+    final user = NaraUserSession.currentUser.value;
+
+    if (user == null ||
+        user.tipo != NaraUserType.contactoConfianza ||
+        user.idUsuario == null) {
       return InvitationCodeResult.invalidCode;
     }
 
-    // Evitar solicitudes duplicadas.
-    final alreadyRequested = requests.value.any(
-      (request) => request.correo == correo,
+    final result = await TrustedContactService.requestByCode(
+      code: code,
+      contactId: user.idUsuario!,
     );
 
-    if (alreadyRequested) {
-      return InvitationCodeResult.alreadyRequested;
+    switch (result) {
+      case TrustedContactRequestResult.success:
+        return InvitationCodeResult.success;
+      case TrustedContactRequestResult.invalidCode:
+      case TrustedContactRequestResult.selfRequest:
+      case TrustedContactRequestResult.wrongRole:
+        return InvitationCodeResult.invalidCode;
+      case TrustedContactRequestResult.alreadyRequested:
+        return InvitationCodeResult.alreadyRequested;
+      case TrustedContactRequestResult.alreadyLinked:
+        return InvitationCodeResult.alreadyLinked;
     }
-
-    // Evitar vincular dos veces al mismo contacto.
-    final alreadyLinked = contacts.value.any(
-      (contact) => contact.correo == correo,
-    );
-
-    if (alreadyLinked) {
-      return InvitationCodeResult.alreadyLinked;
-    }
-
-    // Crear una solicitud pendiente.
-    requests.value = [
-      ...requests.value,
-      ContactRequest(
-        nombre: nombre,
-        correo: correo,
-      ),
-    ];
-
-    return InvitationCodeResult.success;
   }
+
 }

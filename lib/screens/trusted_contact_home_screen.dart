@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../models/nara_user_session.dart';
 import '../theme_controller.dart';
+import 'enter_contact_code_screen.dart';
 
 class TrustedContactHomeScreen extends StatelessWidget {
   const TrustedContactHomeScreen({super.key});
@@ -76,7 +77,31 @@ class TrustedContactHomeScreen extends StatelessWidget {
                     color: palette.text,
                   ),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 28),
+
+                // VINCULARSE CON UN USUARIO PRINCIPAL
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EnterContactCodeScreen(
+                          palette: palette,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.vpn_key_outlined),
+                  label: const Text('Vincularme con un código'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: palette.accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
                 _InfoCard(
                   palette: palette,
                   icon: Icons.people_outline,
@@ -167,4 +192,3 @@ class _InfoCard extends StatelessWidget {
     );
   }
 }
-
