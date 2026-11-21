@@ -38,10 +38,7 @@ class TrustedContactService {
     return _saveNewCode(db, principalId);
   }
 
-  static Future<String> _saveNewCode(
-    Database db,
-    int principalId,
-  ) async {
+  static Future<String> _saveNewCode(Database db, int principalId) async {
     String code;
 
     while (true) {
@@ -56,14 +53,10 @@ class TrustedContactService {
       if (existing.isEmpty) break;
     }
 
-    await db.insert(
-      'codigo_invitacion',
-      {
-        'id_usuario_principal': principalId,
-        'codigo': code,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('codigo_invitacion', {
+      'id_usuario_principal': principalId,
+      'codigo': code,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
 
     return code;
   }
@@ -101,8 +94,7 @@ class TrustedContactService {
       return TrustedContactRequestResult.invalidCode;
     }
 
-    final principalId =
-        invitation.first['id_usuario_principal'] as int;
+    final principalId = invitation.first['id_usuario_principal'] as int;
 
     // Evitar que una persona se vincule consigo misma.
     if (principalId == contactId) {
@@ -116,8 +108,7 @@ class TrustedContactService {
       whereArgs: [principalId],
     );
 
-    if (principalUser.isEmpty ||
-        principalUser.first['rol'] != 'paciente') {
+    if (principalUser.isEmpty || principalUser.first['rol'] != 'paciente') {
       return TrustedContactRequestResult.invalidCode;
     }
 
@@ -156,15 +147,12 @@ class TrustedContactService {
     }
 
     // Crear la solicitud.
-    await db.insert(
-      'contacto_confianza',
-      {
-        'id_usuario_principal': principalId,
-        'id_usuario_contacto': contactId,
-        'codigo_vinculacion': code,
-        'estado': 'pendiente',
-      },
-    );
+    await db.insert('contacto_confianza', {
+      'id_usuario_principal': principalId,
+      'id_usuario_contacto': contactId,
+      'codigo_vinculacion': code,
+      'estado': 'pendiente',
+    });
 
     return TrustedContactRequestResult.success;
   }
@@ -178,7 +166,8 @@ class TrustedContactService {
   ) async {
     final db = await NaraDatabase.database;
 
-    return db.rawQuery('''
+    return db.rawQuery(
+      '''
       SELECT
         cc.id_vinculacion,
         cc.id_usuario_principal,
@@ -193,7 +182,9 @@ class TrustedContactService {
       WHERE cc.id_usuario_principal = ?
         AND cc.estado = 'pendiente'
       ORDER BY cc.fecha_solicitud DESC
-    ''', [principalId]);
+    ''',
+      [principalId],
+    );
   }
 
   // =========================================
@@ -213,10 +204,7 @@ class TrustedContactService {
 
     final result = await db.update(
       'contacto_confianza',
-      {
-        'estado': status,
-        'fecha_respuesta': DateTime.now().toIso8601String(),
-      },
+      {'estado': status, 'fecha_respuesta': DateTime.now().toIso8601String()},
       where: '''
         id_vinculacion = ?
         AND id_usuario_principal = ?
@@ -239,7 +227,8 @@ class TrustedContactService {
   ) async {
     final db = await NaraDatabase.database;
 
-    return db.rawQuery('''
+    return db.rawQuery(
+      '''
       SELECT
         cc.id_vinculacion,
         cc.id_usuario_contacto,
@@ -253,6 +242,69 @@ class TrustedContactService {
       WHERE cc.id_usuario_principal = ?
         AND cc.estado = 'aceptada'
       ORDER BY u.nombre
-    ''', [principalId]);
+    ''',
+      [principalId],
+    );
+  }
+
+  // =========================================
+  // USUARIOS PRINCIPALES QUE ACOMPAÑA EL CONTACTO
+  // =========================================
+
+  static Future<List<Map<String, Object?>>> getSupportedUsers(
+    int contactId,
+  ) async {
+    final db = await NaraDatabase.database;
+
+    return db.rawQuery(
+      '''
+      SELECT
+        cc.id_vinculacion,
+        cc.id_usuario_principal,
+        cc.puede_recibir_alertas,
+        cc.fecha_respuesta,
+        u.nombre,
+        u.correo
+      FROM contacto_confianza cc
+      INNER JOIN usuario u
+        ON u.id_usuario = cc.id_usuario_principal
+      WHERE cc.id_usuario_contacto = ?
+        AND cc.estado = 'aceptada'
+      ORDER BY u.nombre
+    ''',
+      [contactId],
+    );
+  }
+
+  // =========================================
+  // DESVINCULAR PERSONAS
+  // =========================================
+
+  static Future<void> revokeLink({
+    required int linkId,
+    required int userId,
+  }) async {
+    final db = await NaraDatabase.database;
+
+    final result = await db.update(
+      'contacto_confianza',
+      {
+        'estado': 'revocada',
+        'fecha_respuesta': DateTime.now().toIso8601String(),
+      },
+      where: '''
+        id_vinculacion = ?
+        AND estado = 'aceptada'
+        AND (
+          id_usuario_principal = ?
+          OR id_usuario_contacto = ?
+        )
+      ''',
+      whereArgs: [linkId, userId, userId],
+    );
+
+    if (result == 0) {
+      throw Exception('No se pudo encontrar una vinculación activa.');
+    }
   }
 }

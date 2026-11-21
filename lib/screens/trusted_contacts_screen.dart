@@ -50,11 +50,13 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
     try {
       await TrustedContactStore.loadCode();
 
-      final requests =
-          await TrustedContactService.getPendingRequests(user!.idUsuario!);
+      final requests = await TrustedContactService.getPendingRequests(
+        user!.idUsuario!,
+      );
 
-      final contacts =
-          await TrustedContactService.getLinkedContacts(user.idUsuario!);
+      final contacts = await TrustedContactService.getLinkedContacts(
+        user.idUsuario!,
+      );
 
       if (!mounted) return;
 
@@ -125,15 +127,16 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
           ? 'Contacto agregado a tu red de apoyo 💜'
           : 'Solicitud rechazada.';
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     } catch (error) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('No se pudo actualizar la solicitud. Inténtalo de nuevo.'),
+          content: Text(
+            'No se pudo actualizar la solicitud. Inténtalo de nuevo.',
+          ),
         ),
       );
     }
@@ -180,11 +183,7 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
               label: const Text('Tengo un código de invitación'),
             ),
 
-            Icon(
-              Icons.people_alt_outlined,
-              size: 65,
-              color: palette.accent,
-            ),
+            Icon(Icons.people_alt_outlined, size: 65, color: palette.accent),
             const SizedBox(height: 12),
 
             Text(
@@ -316,8 +315,48 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
                           children: [
                             Expanded(
                               child: OutlinedButton(
-                                onPressed: () =>
-                                    _respondToRequest(request, 'rechazada'),
+                                onPressed: () async {
+                                  final confirmar = await showDialog<bool>(
+                                    context: context,
+                                    builder: (dialogContext) {
+                                      return AlertDialog(
+                                        title: const Text('¿Estás seguro?'),
+                                        content: const Text(
+                                          '¿Deseas rechazar esta solicitud de contacto '
+                                          'de confianza? Esta persona no quedará vinculada '
+                                          'a tu cuenta.',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(
+                                                dialogContext,
+                                                false,
+                                              );
+                                            },
+                                            child: const Text('Cancelar'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(
+                                                dialogContext,
+                                                true,
+                                              );
+                                            },
+                                            child: const Text('Sí, rechazar'),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+
+                                  if (confirmar == true && mounted) {
+                                    await _respondToRequest(
+                                      request,
+                                      'rechazada',
+                                    );
+                                  }
+                                },
                                 child: const Text('Rechazar'),
                               ),
                             ),
@@ -354,8 +393,7 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
               )
             else
               ..._linkedContacts.map((contact) {
-                final nombre =
-                    contact['nombre']?.toString() ?? 'Sin nombre';
+                final nombre = contact['nombre']?.toString() ?? 'Sin nombre';
                 final correo = contact['correo']?.toString() ?? '';
 
                 return Card(
@@ -365,17 +403,77 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
                       backgroundColor: palette.iconBackground,
                       child: Icon(Icons.person, color: palette.accent),
                     ),
-                    title: Text(
-                      nombre,
-                      style: TextStyle(color: palette.text),
-                    ),
+                    title: Text(nombre, style: TextStyle(color: palette.text)),
                     subtitle: Text(
                       correo,
                       style: TextStyle(color: palette.mutedText),
                     ),
-                    trailing: Icon(
-                      Icons.check_circle,
-                      color: palette.accent,
+                    trailing: IconButton(
+                      tooltip: 'Desvincular contacto',
+                      icon: const Icon(Icons.link_off, color: Colors.redAccent),
+                      onPressed: () async {
+                        final confirmar = await showDialog<bool>(
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            title: const Text('¿Desvincular contacto?'),
+                            content: Text(
+                              '¿Deseas dejar de compartir tu red de apoyo con $nombre? '
+                              'Esta acción no eliminará ninguna cuenta ni sus registros.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, false),
+                                child: const Text('Cancelar'),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, true),
+                                child: const Text('Sí, desvincular'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirmar != true || !mounted) return;
+
+                        final userId =
+                            NaraUserSession.currentUser.value?.idUsuario;
+                        final linkId = contact['id_vinculacion'] as int?;
+
+                        if (userId == null || linkId == null) return;
+
+                        try {
+                          await TrustedContactService.revokeLink(
+                            linkId: linkId,
+                            userId: userId,
+                          );
+
+                          if (!mounted) return;
+
+                          await _loadData();
+
+                          if (!context.mounted) return;
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Contacto desvinculado correctamente.',
+                              ),
+                            ),
+                          );
+                        } catch (error) {
+                          if (!context.mounted) return;
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'No se pudo desvincular el contacto.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
                     ),
                   ),
                 );

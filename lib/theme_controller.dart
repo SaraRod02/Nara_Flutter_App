@@ -73,7 +73,7 @@ class NaraThemeController {
     ),
     NaraPalette(
       name: 'Amarillo',
-      accent: const Color(0xFFF4C95D),
+      accent: Color(0xFFF4C95D),
       background: Color(0xFFFFFCF2),
       surface: Color(0xFFFFFFFF),
       secondary: Color(0xFFFFF0B8),
