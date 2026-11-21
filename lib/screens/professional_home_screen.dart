@@ -1,8 +1,8 @@
-
 import 'package:flutter/material.dart';
 
 import '../models/nara_user_session.dart';
 import '../theme_controller.dart';
+import 'professional_profile_screen.dart';
 
 class ProfessionalHomeScreen extends StatelessWidget {
   const ProfessionalHomeScreen({super.key});
@@ -34,7 +34,9 @@ class ProfessionalHomeScreen extends StatelessWidget {
                   await NaraUserSession.clear();
                   if (!context.mounted) return;
                   Navigator.pushNamedAndRemoveUntil(
-                    context, '/', (route) => false,
+                    context,
+                    '/',
+                    (route) => false,
                   );
                 },
               ),
@@ -108,6 +110,14 @@ class ProfessionalHomeScreen extends StatelessWidget {
                   description:
                       'Aquí podrás consultar y actualizar tu '
                       'información profesional.',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProfessionalProfileScreen(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -123,52 +133,55 @@ class _ProfessionalCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String description;
+  final VoidCallback? onTap;
 
   const _ProfessionalCard({
     required this.palette,
     required this.icon,
     required this.title,
     required this.description,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: palette.border),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 30, color: palette.accent),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: palette.accent,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: palette.border),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 30, color: palette.accent),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: palette.accent,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  description,
-                  style: TextStyle(
-                    height: 1.4,
-                    color: palette.text,
+                  const SizedBox(height: 7),
+                  Text(
+                    description,
+                    style: TextStyle(height: 1.4, color: palette.text),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

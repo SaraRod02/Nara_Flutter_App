@@ -17,6 +17,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nombreController = TextEditingController();
   final _correoController = TextEditingController();
   final _contrasenaController = TextEditingController();
+  final _telefonoController = TextEditingController();
+  final _especialidadController = TextEditingController();
+  final _cedulaController = TextEditingController();
   bool _cargando = false;
 
   NaraUserType _tipoSeleccionado = NaraUserType.usuarioPrincipal;
@@ -26,6 +29,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nombreController.dispose();
     _correoController.dispose();
     _contrasenaController.dispose();
+    _telefonoController.dispose();
+    _especialidadController.dispose();
+    _cedulaController.dispose();
     super.dispose();
   }
 
@@ -44,6 +50,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         correo: _correoController.text,
         password: _contrasenaController.text,
         tipo: _tipoSeleccionado,
+        telefono: _tipoSeleccionado == NaraUserType.profesional
+            ? _telefonoController.text
+            : null,
+        especialidad: _tipoSeleccionado == NaraUserType.profesional
+            ? _especialidadController.text
+            : null,
+        cedulaProfesional: _tipoSeleccionado == NaraUserType.profesional
+            ? _cedulaController.text
+            : null,
       );
 
       debugPrint('ROL SELECCIONADO: $_tipoSeleccionado');
@@ -150,6 +165,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   TextFormField(
                     controller: _contrasenaController,
+
                     obscureText: true,
                     decoration: const InputDecoration(
                       labelText: 'Contraseña',
@@ -207,6 +223,74 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ],
                     ),
                   ),
+
+                  if (_tipoSeleccionado == NaraUserType.profesional) ...[
+                    const SizedBox(height: 12),
+
+                    const Text(
+                      'Datos profesionales',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: _telefonoController,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'Teléfono',
+                        prefixIcon: Icon(Icons.phone_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (_tipoSeleccionado == NaraUserType.profesional &&
+                            (value == null || value.trim().isEmpty)) {
+                          return 'Escribe tu teléfono.';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    TextFormField(
+                      controller: _especialidadController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Especialidad',
+                        prefixIcon: Icon(Icons.medical_services_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (_tipoSeleccionado == NaraUserType.profesional &&
+                            (value == null || value.trim().isEmpty)) {
+                          return 'Escribe tu especialidad.';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    TextFormField(
+                      controller: _cedulaController,
+                      decoration: const InputDecoration(
+                        labelText: 'Cédula profesional',
+                        prefixIcon: Icon(Icons.badge_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (_tipoSeleccionado == NaraUserType.profesional &&
+                            (value == null || value.trim().isEmpty)) {
+                          return 'Escribe tu cédula profesional.';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
 
                   const SizedBox(height: 26),
 

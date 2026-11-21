@@ -64,21 +64,13 @@ class AuthService {
     required String correo,
     required String password,
     required NaraUserType tipo,
+    String? telefono,
+    String? especialidad,
+    String? cedulaProfesional,
   }) async {
     final db = await NaraDatabase.database;
 
     final correoNormalizado = correo.trim().toLowerCase();
-
-    final existentes = await db.query(
-      'usuario',
-      where: 'correo = ?',
-      whereArgs: [correoNormalizado],
-      limit: 1,
-    );
-
-    if (existentes.isNotEmpty) {
-      throw Exception('Este correo ya está registrado.');
-    }
 
     final roles = {
       NaraUserType.usuarioPrincipal: 'paciente',
@@ -88,16 +80,36 @@ class AuthService {
 
     final passwordHash = await _crearHash(password);
 
-    final idUsuario = await db.insert('usuario', {
-      'nombre': nombre.trim(),
-      'correo': correoNormalizado,
-      'contraseña_hash': passwordHash,
-      'rol': roles[tipo]!,
-    });
+    final idUsuario = await db.transaction((txn) async {
+      final existentes = await txn.query(
+        'usuario',
+        where: 'correo = ?',
+        whereArgs: [correoNormalizado],
+        limit: 1,
+      );
 
-    if (tipo == NaraUserType.profesional) {
-      await db.insert('psicologo', {'id_psicologo': idUsuario});
-    }
+      if (existentes.isNotEmpty) {
+        throw Exception('Este correo ya está registrado.');
+      }
+
+      final id = await txn.insert('usuario', {
+        'nombre': nombre.trim(),
+        'correo': correoNormalizado,
+        'contraseña_hash': passwordHash,
+        'rol': roles[tipo]!,
+      });
+
+      if (tipo == NaraUserType.profesional) {
+        await txn.insert('psicologo', {
+          'id_psicologo': id,
+          'telefono': telefono?.trim(),
+          'especialidad': especialidad?.trim(),
+          'cedula_profesional': cedulaProfesional?.trim(),
+        });
+      }
+
+      return id;
+    });
 
     return NaraUser(
       idUsuario: idUsuario,
@@ -120,7 +132,6 @@ class AuthService {
       limit: 1,
     );
 
-
     if (resultados.isEmpty) {
       throw Exception('Correo o contraseña incorrectos.');
     }
@@ -130,7 +141,6 @@ class AuthService {
     final hashGuardado = usuario['contraseña_hash'] as String;
 
     final passwordCorrecta = await _verificarHash(password, hashGuardado);
-
 
     if (!passwordCorrecta) {
       throw Exception('Correo o contraseña incorrectos.');
@@ -185,5 +195,4 @@ class AuthService {
       tipo: tipo,
     );
   }
-
 }

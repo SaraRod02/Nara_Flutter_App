@@ -1,4 +1,3 @@
-
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -41,7 +40,7 @@ class NaraDatabase {
 
     return await openDatabase(
       dbPath,
-      version: 3,
+      version: 4,
 
       // Desactivar temporalmente las llaves foráneas
       // durante la reconstrucción de las tablas.
@@ -225,6 +224,18 @@ class NaraDatabase {
               FOREIGN KEY (id_usuario_principal)
                 REFERENCES usuario(id_usuario)
             )
+          ''');
+        }
+
+        // ==========================================
+        // MIGRACIÓN 3 -> 4
+        // ==========================================
+
+        if (oldVersion < 4) {
+          // Agregar teléfono al perfil del especialista.
+          await db.execute('''
+            ALTER TABLE psicologo
+            ADD COLUMN telefono TEXT
           ''');
         }
       },
