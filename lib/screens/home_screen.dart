@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme_controller.dart';
 import '../models/nara_user.dart';
 import '../models/nara_user_session.dart';
+import 'lumi_screen.dart';
 
 import 'emotion_screen.dart';
 import 'settings_screen.dart';
@@ -164,51 +165,65 @@ class _HomeTab extends StatelessWidget {
           const SizedBox(height: 28),
 
           // TARJETA DE LUMI
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: palette.secondary,
-              borderRadius: BorderRadius.circular(24),
-            ),
-         child: Column(
-  children: [
-    SizedBox(
-      height: 180,
-      width: 180,
-      child: Flutter3DViewer(
-        controller: lumiController,
-        src: 'assets/models/lumi_animado.glb',
-        onLoad: (modelAddress) {
-          lumiController.playAnimation(loopCount: 0);
-        },
-        onError: (error) {
-          debugPrint('Error al cargar Lumi: $error');
-        },
-      ),
+         GestureDetector(
+  onTap: () {
+  Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (context) => LumiScreen(
+       accentColor: palette.accent,
+      textColor: palette.text,
+      backgroundColor: palette.secondary,
     ),
-
-    const SizedBox(height: 10),
-
-    Text(
-      '¡Hola! Soy LUMI',
-      style: TextStyle(
-        fontSize: 22,
-        fontWeight: FontWeight.bold,
-        color: palette.accent,
-      ),
+  ),
+);
+  },
+  child: Container(
+    padding: const EdgeInsets.all(24),
+    decoration: BoxDecoration(
+      color: palette.secondary,
+      borderRadius: BorderRadius.circular(24),
     ),
-
-    const SizedBox(height: 8),
-
-    Text(
-      'Estoy aquí para acompañarte mientras aprendes '
-      'a escuchar tus emociones.',
-      textAlign: TextAlign.center,
-      style: TextStyle(color: palette.text, height: 1.5),
-    ),
-  ],
-),
+    child: Column(
+      children: [
+        SizedBox(
+          height: 180,
+          width: 180,
+          child: Flutter3DViewer(
+            controller: lumiController,
+            src: 'assets/models/lumi_animado.glb',
+            onLoad: (modelAddress) {
+              lumiController.playAnimation(loopCount: 0);
+            },
+            onError: (error) {
+              debugPrint('Error al cargar Lumi: $error');
+            },
           ),
+        ),
+
+        const SizedBox(height: 10),
+
+        Text(
+          '¡Hola! Soy LUMI',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: palette.accent,
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        Text(
+          'Estoy aquí para acompañarte mientras aprendes '
+          'a escuchar tus emociones.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: palette.text, height: 1.5),
+        ),
+      ],
+    ),
+  ),
+),
 
           const SizedBox(height: 28),
 
