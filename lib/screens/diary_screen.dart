@@ -243,7 +243,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     padding: const EdgeInsets.all(20),
                     child: Text(
                       'Todavía no tienes entradas. '
-                      'Cuando guardes la primera, aparecerá aquí. 💜',
+                      'Cuando guardes la primera, aparecerá aquí.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: palette.mutedText),
                     ),

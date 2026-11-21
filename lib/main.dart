@@ -110,7 +110,7 @@ class WelcomeScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.favorite_rounded, size: 90, color: palette.accent),
+            Icon(Icons.star_rounded, size: 90, color: palette.accent),
             const SizedBox(height: 20),
             Text(
               'NARA',

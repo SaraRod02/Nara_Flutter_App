@@ -36,13 +36,13 @@ class _EmotionScreenState extends State<EmotionScreen> {
 
   final List<Map<String, dynamic>> _emotions = [
     {'name': 'Feliz', 'emoji': '😊'},
-    {'name': 'Tranquila/o', 'emoji': '😌'},
-    {'name': 'Ansiosa/o', 'emoji': '😰'},
+    {'name': 'Tranquilo/a', 'emoji': '😌'},
+    {'name': 'Ansioso/a', 'emoji': '😰'},
     {'name': 'Triste', 'emoji': '😔'},
-    {'name': 'Enojada/o', 'emoji': '😠'},
-    {'name': 'Agotada/o', 'emoji': '🥱'},
+    {'name': 'Enojado/a', 'emoji': '😠'},
+    {'name': 'Agotado/a', 'emoji': '🥱'},
     {'name': 'Con miedo', 'emoji': '😟'},
-    {'name': 'Confundida/o', 'emoji': '😵‍💫'},
+    {'name': 'Confundido/a', 'emoji': '😵‍💫'},
   ];
 
   String? _selectedEmotion;
@@ -76,7 +76,7 @@ class _EmotionScreenState extends State<EmotionScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Tu registro se guardó 💗 Gracias por escucharte.'),
+        content: Text('Tu registro se guardó  Gracias por escucharte.'),
       ),
     );
 
@@ -102,7 +102,7 @@ class _EmotionScreenState extends State<EmotionScreen> {
                 padding: const EdgeInsets.all(22),
                 children: [
                   Text(
-                    'Date un momento para ti 💗',
+                    'Date un momento para ti',
                     style: TextStyle(
                       fontSize: 25,
                       fontWeight: FontWeight.bold,
@@ -270,7 +270,7 @@ class _EmotionScreenState extends State<EmotionScreen> {
                     height: 54,
                     child: ElevatedButton.icon(
                       onPressed: _saveRecord,
-                      icon: const Icon(Icons.favorite_outline),
+                      icon: const Icon(Icons.star_outline),
                       label: const Text('Guardar registro'),
                     ),
                   ),

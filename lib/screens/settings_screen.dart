@@ -21,7 +21,7 @@ class SettingsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             children: [
               const Text(
-                'Haz tuyo este espacio 💜',
+                'Haz tuyo este espacio',
                 style: TextStyle(
                   fontSize: 25,
                   fontWeight: FontWeight.bold,
@@ -29,7 +29,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Elige los colores que te hagan sentir cómoda/o.',
+                'Elige los colores que te hagan sentir cómodo/a.',
               ),
               const SizedBox(height: 28),
               const Text(
@@ -75,7 +75,7 @@ class SettingsScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Icon(
-                      Icons.favorite,
+                      Icons.star_rounded,
                       color: palette.accent,
                       size: 42,
                     ),

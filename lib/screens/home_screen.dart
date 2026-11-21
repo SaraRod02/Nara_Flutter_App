@@ -103,8 +103,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: 'Inicio',
               ),
               NavigationDestination(
-                icon: Icon(Icons.favorite_outline),
-                selectedIcon: Icon(Icons.favorite),
+                icon: Icon(Icons.star_outline_rounded),
+                selectedIcon: Icon(Icons.star_rounded),
                 label: 'Seguimiento',
               ),
               NavigationDestination(
