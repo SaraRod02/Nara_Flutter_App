@@ -1,5 +1,5 @@
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import '../models/lumi_activity.dart';
 
@@ -72,21 +72,8 @@ List<LumiActivity> get selectedActivities =>
                         },
                       ),
                     ),
-
-                    const SizedBox(height: 20),
-
-                    // NOMBRE DE LUMI
-                    Text(
-                      '¡Hola! Soy LUMI',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: widget.accentColor,
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-
+                    
+                    const SizedBox(height: 5),
                     // MENSAJE MOTIVACIONAL
                     Text(
                       '"Decide intentarlo hoy; tu esfuerzo importa."',
