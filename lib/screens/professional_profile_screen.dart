@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../models/nara_user_session.dart';
 import '../database/nara_database.dart';
@@ -20,6 +20,9 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
   final _telefonoController = TextEditingController();
   final _especialidadController = TextEditingController();
   final _cedulaController = TextEditingController();
+
+  String _tipoProfesional = 'psicologo';
+  String _tipoProfesionalOriginal = 'psicologo';
 
   bool _editando = false;
   bool _cargando = true;
@@ -47,18 +50,19 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
 
       final resultado = await db.rawQuery(
         '''
-      SELECT
-        usuario.nombre,
-        usuario.correo,
-        psicologo.telefono,
-        psicologo.especialidad,
-        psicologo.cedula_profesional
-      FROM usuario
-      INNER JOIN psicologo
-        ON psicologo.id_psicologo = usuario.id_usuario
-      WHERE usuario.id_usuario = ?
-      LIMIT 1
-    ''',
+        SELECT
+          usuario.nombre,
+          usuario.correo,
+          psicologo.telefono,
+          psicologo.especialidad,
+          psicologo.cedula_profesional,
+          psicologo.tipo_profesional
+        FROM usuario
+        INNER JOIN psicologo
+          ON psicologo.id_psicologo = usuario.id_usuario
+        WHERE usuario.id_usuario = ?
+        LIMIT 1
+        ''',
         [usuario.idUsuario],
       );
 
@@ -70,6 +74,12 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
         _telefonoController.text = datos['telefono']?.toString() ?? '';
         _especialidadController.text = datos['especialidad']?.toString() ?? '';
         _cedulaController.text = datos['cedula_profesional']?.toString() ?? '';
+
+        final tipo = datos['tipo_profesional']?.toString();
+
+        _tipoProfesional = tipo == 'psiquiatra' ? 'psiquiatra' : 'psicologo';
+
+        _tipoProfesionalOriginal = _tipoProfesional;
       }
     } catch (e) {
       debugPrint('Error al cargar perfil profesional: $e');
@@ -92,7 +102,37 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
     try {
       final db = await NaraDatabase.database;
 
-      await db.transaction((txn) async {
+      final guardado = await db.transaction<bool>((txn) async {
+        // Si cambia el tipo profesional, revisar las vinculaciones.
+        if (_tipoProfesional != _tipoProfesionalOriginal) {
+          final pacientesVinculados = await txn.rawQuery(
+            '''
+            SELECT 1
+            FROM paciente
+            WHERE id_psicologo = ?
+              AND fecha_fin IS NULL
+            LIMIT 1
+            ''',
+            [usuario.idUsuario],
+          );
+
+          final solicitudesPendientes = await txn.rawQuery(
+            '''
+            SELECT 1
+            FROM solicitud_psicologo
+            WHERE id_psicologo = ?
+              AND estado = 'pendiente'
+            LIMIT 1
+            ''',
+            [usuario.idUsuario],
+          );
+
+          if (pacientesVinculados.isNotEmpty ||
+              solicitudesPendientes.isNotEmpty) {
+            return false;
+          }
+        }
+
         await txn.update(
           'usuario',
           {
@@ -109,11 +149,30 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
             'telefono': _telefonoController.text.trim(),
             'especialidad': _especialidadController.text.trim(),
             'cedula_profesional': _cedulaController.text.trim(),
+            'tipo_profesional': _tipoProfesional,
           },
           where: 'id_psicologo = ?',
           whereArgs: [usuario.idUsuario],
         );
+
+        return true;
       });
+
+      if (!guardado) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No puedes cambiar tu tipo profesional mientras tengas '
+              'pacientes vinculados o solicitudes pendientes. '
+              'Resuelve primero esas vinculaciones.',
+            ),
+            duration: Duration(seconds: 5),
+          ),
+        );
+        return;
+      }
 
       final usuarioActualizado = usuario.copyWith(
         nombre: _nombreController.text.trim(),
@@ -121,6 +180,8 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
       );
 
       await NaraUserSession.updateUser(usuarioActualizado);
+
+      _tipoProfesionalOriginal = _tipoProfesional;
 
       if (!mounted) return;
 
@@ -138,6 +199,17 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
         SnackBar(content: Text('No se pudo actualizar el perfil: $e')),
       );
     }
+  }
+
+  Future<void> _cancelarEdicion() async {
+    await _cargarPerfil();
+
+    if (!mounted) return;
+
+    setState(() {
+      _tipoProfesional = _tipoProfesionalOriginal;
+      _editando = false;
+    });
   }
 
   @override
@@ -214,10 +286,54 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
                           Icons.phone_outlined,
                           palette,
                         ),
+
+                        // Selector del tipo de profesional.
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 18),
+                          child: DropdownButtonFormField<String>(
+                            initialValue: _tipoProfesional,
+                            decoration: InputDecoration(
+                              labelText: 'Tipo de profesional',
+                              prefixIcon: Icon(
+                                Icons.medical_services_outlined,
+                                color: palette.accent,
+                              ),
+                              filled: true,
+                              fillColor: palette.surface,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(color: palette.border),
+                              ),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'psicologo',
+                                child: Text('Psicólogo/a'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'psiquiatra',
+                                child: Text('Psiquiatra'),
+                              ),
+                            ],
+                            onChanged: _editando
+                                ? (value) {
+                                    if (value != null) {
+                                      setState(() {
+                                        _tipoProfesional = value;
+                                      });
+                                    }
+                                  }
+                                : null,
+                          ),
+                        ),
+
                         _campo(
                           'Especialidad',
                           _especialidadController,
-                          Icons.medical_services_outlined,
+                          Icons.medical_information_outlined,
                           palette,
                         ),
                         _campo(
@@ -262,12 +378,7 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _cargarPerfil();
-                                _editando = false;
-                              });
-                            },
+                            onPressed: _cancelarEdicion,
                             child: Text(
                               'Cancelar',
                               style: TextStyle(color: palette.accent),

@@ -67,6 +67,7 @@ class AuthService {
     String? telefono,
     String? especialidad,
     String? cedulaProfesional,
+    String tipoProfesional = 'psicologo',
   }) async {
     final db = await NaraDatabase.database;
 
@@ -75,7 +76,6 @@ class AuthService {
     final roles = {
       NaraUserType.usuarioPrincipal: 'paciente',
       NaraUserType.contactoConfianza: 'contacto_confianza',
-      NaraUserType.profesional: 'psicologo',
     };
 
     final passwordHash = await _crearHash(password);
@@ -100,11 +100,16 @@ class AuthService {
       });
 
       if (tipo == NaraUserType.profesional) {
+        if (!['psicologo', 'psiquiatra'].contains(tipoProfesional)) {
+          throw Exception('Tipo de profesional no válido.');
+        }
+
         await txn.insert('psicologo', {
           'id_psicologo': id,
           'telefono': telefono?.trim(),
           'especialidad': especialidad?.trim(),
           'cedula_profesional': cedulaProfesional?.trim(),
+          'tipo_profesional': tipoProfesional,
         });
       }
 

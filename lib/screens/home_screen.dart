@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../theme_controller.dart';
 import '../models/nara_user.dart';
@@ -11,6 +11,9 @@ import 'trusted_contacts_screen.dart';
 import 'symptom_screen.dart';
 import 'trends_screen.dart';
 import 'diary_screen.dart';
+import 'professional_privacy_screen.dart';
+import 'my_professionals_screen.dart';
+
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -135,7 +138,11 @@ class _HomeTab extends StatelessWidget {
   final ValueChanged<int> onSelectTab;
   final Flutter3DController lumiController;
 
-  const _HomeTab({required this.palette, required this.onSelectTab, required this.lumiController,});
+  const _HomeTab({
+    required this.palette,
+    required this.onSelectTab,
+    required this.lumiController,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -164,66 +171,62 @@ class _HomeTab extends StatelessWidget {
 
           const SizedBox(height: 28),
 
-          // TARJETA DE LUMI
-         GestureDetector(
-  onTap: () {
-  Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (context) => LumiScreen(
-       accentColor: palette.accent,
-      textColor: palette.text,
-      backgroundColor: palette.secondary,
-    ),
-  ),
-);
-  },
-  child: Container(
-    padding: const EdgeInsets.all(24),
-    decoration: BoxDecoration(
-      color: palette.secondary,
-      borderRadius: BorderRadius.circular(24),
-    ),
-    child: Column(
-      children: [
-        SizedBox(
-          height: 180,
-          width: 180,
-          child: Flutter3DViewer(
-            controller: lumiController,
-            src: 'assets/models/lumi_animado.glb',
-            onLoad: (modelAddress) {
-              lumiController.playAnimation(loopCount: 0);
+             // TARJETA DE LUMI
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LumiScreen(
+                    accentColor: palette.accent,
+                    textColor: palette.text,
+                    backgroundColor: palette.secondary,
+                  ),
+                ),
+              );
             },
-            onError: (error) {
-              debugPrint('Error al cargar Lumi: $error');
-            },
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: palette.secondary,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 180,
+                    width: 180,
+                    child: Flutter3DViewer(
+                      controller: lumiController,
+                      src: 'assets/models/lumi_animado.glb',
+                      onLoad: (modelAddress) {
+                        lumiController.playAnimation(loopCount: 0);
+                      },
+                      onError: (error) {
+                        debugPrint('Error al cargar Lumi: $error');
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '¡Hola! Soy LUMI',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: palette.accent,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Estoy aquí para acompañarte mientras aprendes '
+                    'a escuchar tus emociones.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: palette.text, height: 1.5),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-
-        const SizedBox(height: 10),
-
-        Text(
-          '¡Hola! Soy LUMI',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: palette.accent,
-          ),
-        ),
-
-        const SizedBox(height: 8),
-
-        Text(
-          'Estoy aquí para acompañarte mientras aprendes '
-          'a escuchar tus emociones.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: palette.text, height: 1.5),
-        ),
-      ],
-    ),
-  ),
-),
 
           const SizedBox(height: 28),
 
@@ -299,6 +302,36 @@ class _HomeTab extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (_) => TrustedContactsScreen(palette: palette),
                 ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 12),
+
+          ValueListenableBuilder<NaraUser?>(
+            valueListenable: NaraUserSession.currentUser,
+            builder: (context, user, child) {
+              if (user?.tipo != NaraUserType.usuarioPrincipal ||
+                  user?.idUsuario == null) {
+                return const SizedBox.shrink();
+              }
+
+              return _HomeOption(
+                palette: palette,
+                icon: Icons.medical_services_outlined,
+                title: 'Mis especialistas',
+                description: 'Conecta con tu psicólogo o psiquiatra y administra tus solicitudes.',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MyProfessionalsScreen(
+                        patientId: user!.idUsuario!,
+                        palette: palette,
+                      ),
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -566,12 +599,25 @@ class _ProfileTab extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              _ComingSoonOption(
-                palette: palette,
-                icon: Icons.lock_outline,
-                title: 'Privacidad y permisos',
-                description: 'Administra el acceso a tu información.',
-              ),
+              if (user?.tipo == NaraUserType.usuarioPrincipal &&
+                  user?.idUsuario != null)
+                _HomeOption(
+                  palette: palette,
+                  icon: Icons.lock_outline,
+                  title: 'Privacidad y permisos',
+                  description: 'Administra el acceso a tu información.',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProfessionalPrivacyScreen(
+                          patientId: user!.idUsuario!,
+                          palette: palette,
+                        ),
+                      ),
+                    );
+                  },
+                ),
 
               const SizedBox(height: 12),
 

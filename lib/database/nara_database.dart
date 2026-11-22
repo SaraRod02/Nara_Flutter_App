@@ -40,7 +40,7 @@ class NaraDatabase {
 
     return await openDatabase(
       dbPath,
-      version: 4,
+      version: 9,
 
       // Desactivar temporalmente las llaves foráneas
       // durante la reconstrucción de las tablas.
@@ -236,6 +236,218 @@ class NaraDatabase {
           await db.execute('''
             ALTER TABLE psicologo
             ADD COLUMN telefono TEXT
+          ''');
+        }
+
+        // ==========================================
+        // MIGRACIÓN 4 -> 5
+        // ==========================================
+
+        if (oldVersion < 5) {
+          await db.execute('''
+    ALTER TABLE codigo_invitacion
+    ADD COLUMN fecha_expiracion TEXT
+  ''');
+
+          // Dar 7 días adicionales a los códigos existentes.
+          await db.execute('''
+    UPDATE codigo_invitacion
+    SET fecha_expiracion = datetime('now', '+7 days')
+    WHERE fecha_expiracion IS NULL
+  ''');
+        }
+
+        // ==========================================
+        // MIGRACIÓN 5 -> 6
+        // ==========================================
+
+        if (oldVersion < 6) {
+          // 1. Código de invitación para psicólogos.
+          await db.execute('''
+            CREATE TABLE codigo_psicologo (
+              id_codigo INTEGER PRIMARY KEY AUTOINCREMENT,
+              id_usuario_paciente INTEGER NOT NULL UNIQUE,
+              codigo TEXT NOT NULL UNIQUE,
+              fecha_creacion TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              fecha_expiracion TEXT NOT NULL,
+              FOREIGN KEY (id_usuario_paciente)
+                REFERENCES usuario(id_usuario)
+            )
+          ''');
+
+          // 2. Solicitudes de vinculación profesional.
+          await db.execute('''
+            CREATE TABLE solicitud_psicologo (
+              id_solicitud INTEGER PRIMARY KEY AUTOINCREMENT,
+              id_usuario_paciente INTEGER NOT NULL,
+              id_psicologo INTEGER NOT NULL,
+              codigo_utilizado TEXT NOT NULL,
+              estado TEXT NOT NULL DEFAULT 'pendiente'
+                CHECK (estado IN (
+                  'pendiente',
+                  'aceptada',
+                  'rechazada'
+                )),
+              fecha_solicitud TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              fecha_respuesta TEXT,
+              FOREIGN KEY (id_usuario_paciente)
+                REFERENCES usuario(id_usuario),
+              FOREIGN KEY (id_psicologo)
+                REFERENCES psicologo(id_psicologo),
+              CHECK (
+                id_usuario_paciente <> id_psicologo
+              )
+            )
+          ''');
+
+          // 3. Índices para consultar solicitudes.
+          await db.execute('''
+            CREATE INDEX idx_solicitud_psicologo
+            ON solicitud_psicologo (id_psicologo, estado)
+          ''');
+
+          await db.execute('''
+            CREATE INDEX idx_solicitud_paciente
+            ON solicitud_psicologo (id_usuario_paciente, estado)
+          ''');
+        }
+
+        // ==========================================
+        // MIGRACIÓN 6 -> 7
+        // ==========================================
+
+        if (oldVersion < 7) {
+          // 1. Identificar el tipo de profesional.
+          // Los registros anteriores serán psicólogos.
+          await db.execute('''
+            ALTER TABLE psicologo
+            ADD COLUMN tipo_profesional TEXT NOT NULL
+            DEFAULT 'psicologo'
+            CHECK (
+              tipo_profesional IN ('psicologo', 'psiquiatra')
+            )
+          ''');
+
+          // 2. Reconstruir los códigos profesionales.
+          // Ahora cada paciente tendrá un código
+          // independiente para cada tipo profesional.
+          await db.execute('''
+            CREATE TABLE codigo_psicologo_nuevo (
+              id_codigo INTEGER PRIMARY KEY AUTOINCREMENT,
+              id_usuario_paciente INTEGER NOT NULL,
+              codigo TEXT NOT NULL UNIQUE,
+              tipo_profesional TEXT NOT NULL
+                CHECK (
+                  tipo_profesional IN ('psicologo', 'psiquiatra')
+                ),
+              fecha_creacion TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              fecha_expiracion TEXT NOT NULL,
+              FOREIGN KEY (id_usuario_paciente)
+                REFERENCES usuario(id_usuario),
+              UNIQUE (id_usuario_paciente, tipo_profesional)
+            )
+          ''');
+
+          await db.execute('''
+            INSERT INTO codigo_psicologo_nuevo (
+              id_codigo,
+              id_usuario_paciente,
+              codigo,
+              tipo_profesional,
+              fecha_creacion,
+              fecha_expiracion
+            )
+            SELECT
+              id_codigo,
+              id_usuario_paciente,
+              codigo,
+              'psicologo',
+              fecha_creacion,
+              fecha_expiracion
+            FROM codigo_psicologo
+          ''');
+
+          await db.execute('DROP TABLE codigo_psicologo');
+
+          await db.execute('''
+            ALTER TABLE codigo_psicologo_nuevo
+            RENAME TO codigo_psicologo
+          ''');
+        }
+
+        // ==========================================
+        // MIGRACIÓN 7 -> 8
+        // ==========================================
+
+        if (oldVersion < 8) {
+          // 1. Crear los registros principales de síntomas.
+          await db.execute('''
+            CREATE TABLE registro_sintomas (
+              id_registro_sintomas INTEGER PRIMARY KEY AUTOINCREMENT,
+              id_usuario INTEGER NOT NULL,
+              comentario TEXT,
+              fecha_registro TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (id_usuario)
+                REFERENCES usuario(id_usuario)
+            )
+          ''');
+
+          // 2. Crear el detalle de cada síntoma registrado.
+          await db.execute('''
+            CREATE TABLE detalle_sintoma (
+              id_detalle INTEGER PRIMARY KEY AUTOINCREMENT,
+              id_registro_sintomas INTEGER NOT NULL,
+              nombre_sintoma TEXT NOT NULL,
+              nivel_intensidad INTEGER NOT NULL
+                CHECK (nivel_intensidad BETWEEN 1 AND 5),
+              FOREIGN KEY (id_registro_sintomas)
+                REFERENCES registro_sintomas(id_registro_sintomas)
+                ON DELETE CASCADE,
+              UNIQUE (id_registro_sintomas, nombre_sintoma)
+            )
+          ''');
+
+          // 3. Facilitar la consulta del historial por usuario.
+          await db.execute('''
+            CREATE INDEX idx_registro_sintomas_usuario
+            ON registro_sintomas (id_usuario, fecha_registro)
+          ''');
+        }
+
+        // ==========================================
+        // MIGRACIÓN 8 -> 9
+        // ==========================================
+
+        if (oldVersion < 9) {
+          // Registrar los permisos que cada paciente
+          // concede o revoca a sus especialistas.
+          await db.execute('''
+            CREATE TABLE consentimiento_profesional (
+              id_consentimiento INTEGER PRIMARY KEY AUTOINCREMENT,
+              id_usuario_paciente INTEGER NOT NULL,
+              id_psicologo INTEGER NOT NULL,
+              estado TEXT NOT NULL
+                CHECK (estado IN ('concedido', 'revocado')),
+              fecha_concesion TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              fecha_revocacion TEXT,
+              FOREIGN KEY (id_usuario_paciente)
+                REFERENCES usuario(id_usuario),
+              FOREIGN KEY (id_psicologo)
+                REFERENCES psicologo(id_psicologo),
+              CHECK (
+                id_usuario_paciente <> id_psicologo
+              )
+            )
+          ''');
+
+          // Consultar rápidamente los permisos vigentes.
+          await db.execute('''
+            CREATE INDEX idx_consentimiento_profesional
+            ON consentimiento_profesional (
+              id_usuario_paciente,
+              id_psicologo,
+              estado
+            )
           ''');
         }
       },

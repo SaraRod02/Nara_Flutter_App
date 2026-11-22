@@ -1,24 +1,42 @@
-
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../theme_controller.dart';
 import 'emotion_screen.dart';
 import 'symptom_screen.dart';
+import '../models/nara_user_session.dart';
 
-class TrendsScreen extends StatelessWidget {
+class TrendsScreen extends StatefulWidget {
   final NaraPalette palette;
 
-  const TrendsScreen({
-    super.key,
-    required this.palette,
-  });
+  const TrendsScreen({super.key, required this.palette});
+
+  @override
+  State<TrendsScreen> createState() => _TrendsScreenState();
+}
+
+class _TrendsScreenState extends State<TrendsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final userId = NaraUserSession.currentUser.value?.idUsuario;
+
+    if (userId != null) {
+      await Future.wait([
+        EmotionalStore.loadRecords(userId),
+        SymptomRecordStore.loadRecords(userId),
+      ]);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final palette = widget.palette;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mis tendencias'),
-      ),
+      appBar: AppBar(title: const Text('Mis tendencias')),
       body: ValueListenableBuilder<List<EmotionalRecord>>(
         valueListenable: EmotionalStore.records,
         builder: (context, emotionalRecords, _) {
@@ -28,9 +46,9 @@ class TrendsScreen extends StatelessWidget {
               final averageEmotion = emotionalRecords.isEmpty
                   ? 0.0
                   : emotionalRecords
-                          .map((record) => record.intensity)
-                          .reduce((a, b) => a + b) /
-                      emotionalRecords.length;
+                            .map((record) => record.intensity)
+                            .reduce((a, b) => a + b) /
+                        emotionalRecords.length;
 
               final emotionCounts = <String, int>{};
 
@@ -47,8 +65,7 @@ class TrendsScreen extends StatelessWidget {
 
               for (final record in symptomRecords) {
                 record.symptoms.forEach((symptom, intensity) {
-                  symptomCounts[symptom] =
-                      (symptomCounts[symptom] ?? 0) + 1;
+                  symptomCounts[symptom] = (symptomCounts[symptom] ?? 0) + 1;
 
                   symptomIntensities
                       .putIfAbsent(symptom, () => [])
@@ -67,9 +84,9 @@ class TrendsScreen extends StatelessWidget {
                     Text(
                       'Conócete un poquito más ✨',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: palette.text,
-                          ),
+                        fontWeight: FontWeight.bold,
+                        color: palette.text,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -139,9 +156,9 @@ class TrendsScreen extends StatelessWidget {
                       )
                     else
                       ...sortedSymptoms.map((entry) {
-                        final intensities =
-                            symptomIntensities[entry.key]!;
-                        final average = intensities.reduce((a, b) => a + b) /
+                        final intensities = symptomIntensities[entry.key]!;
+                        final average =
+                            intensities.reduce((a, b) => a + b) /
                             intensities.length;
 
                         return _SymptomItem(
@@ -158,10 +175,7 @@ class TrendsScreen extends StatelessWidget {
                       'Tus tendencias se calculan a partir de los registros '
                       'disponibles en esta sesión. No representan un '
                       'diagnóstico médico.',
-                      style: TextStyle(
-                        color: palette.mutedText,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: palette.mutedText, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -200,15 +214,11 @@ class _MetricCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text(title, style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
       ),
@@ -227,9 +237,8 @@ class _SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+        style: Theme.of(context).textTheme.titleMedium
+            ?.copyWith(fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -312,10 +321,7 @@ class _EmptyMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Text(
-        message,
-        style: Theme.of(context).textTheme.bodyMedium,
-      ),
+      child: Text(message, style: Theme.of(context).textTheme.bodyMedium),
     );
   }
 }

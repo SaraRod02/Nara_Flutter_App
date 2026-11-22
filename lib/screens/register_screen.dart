@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../models/nara_user.dart';
 import '../models/nara_user_session.dart';
@@ -23,6 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _cargando = false;
 
   NaraUserType _tipoSeleccionado = NaraUserType.usuarioPrincipal;
+  String _tipoProfesional = 'psicologo';
 
   @override
   void dispose() {
@@ -50,6 +51,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         correo: _correoController.text,
         password: _contrasenaController.text,
         tipo: _tipoSeleccionado,
+        tipoProfesional: _tipoProfesional,
         telefono: _tipoSeleccionado == NaraUserType.profesional
             ? _telefonoController.text
             : null,
@@ -223,6 +225,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ],
                     ),
                   ),
+
+                  if (_tipoSeleccionado == NaraUserType.profesional) ...[
+                    const SizedBox(height: 12),
+
+                    const Text(
+                      '¿Qué tipo de profesional eres?',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    RadioGroup<String>(
+                      groupValue: _tipoProfesional,
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _tipoProfesional = value;
+                          });
+                        }
+                      },
+                      child: Column(
+                        children: [
+                          RadioListTile<String>(
+                            value: 'psicologo',
+                            title: const Text('Psicólogo/a'),
+                            subtitle: const Text(
+                              'Profesional de la psicología.',
+                            ),
+                          ),
+                          RadioListTile<String>(
+                            value: 'psiquiatra',
+                            title: const Text('Psiquiatra'),
+                            subtitle: const Text(
+                              'Médico especialista en psiquiatría.',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   if (_tipoSeleccionado == NaraUserType.profesional) ...[
                     const SizedBox(height: 12),

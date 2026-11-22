@@ -42,6 +42,7 @@ dependencies:
   shared_preferences: ^2.5.6
   flutter_3d_controller: ^2.3.0
 
+  material_ui: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

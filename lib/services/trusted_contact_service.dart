@@ -17,6 +17,8 @@ class TrustedContactService {
   // CÓDIGO DE INVITACIÓN
   // =========================================
 
+  static const int codeValidityDays = 7;
+
   static Future<String> getOrCreateCode(int principalId) async {
     final db = await NaraDatabase.database;
 
@@ -24,8 +26,11 @@ class TrustedContactService {
       'codigo_invitacion',
       where: 'id_usuario_principal = ?',
       whereArgs: [principalId],
+      limit: 1,
     );
 
+    // Si ya existe, devolverlo incluso si venció.
+    // La renovación será decisión del usuario.
     if (existing.isNotEmpty) {
       return existing.first['codigo'] as String;
     }
@@ -38,25 +43,71 @@ class TrustedContactService {
     return _saveNewCode(db, principalId);
   }
 
+  static Future<DateTime?> getCodeExpiration(int principalId) async {
+    final db = await NaraDatabase.database;
+
+    final result = await db.query(
+      'codigo_invitacion',
+      columns: ['fecha_expiracion'],
+      where: 'id_usuario_principal = ?',
+      whereArgs: [principalId],
+      limit: 1,
+    );
+
+    if (result.isEmpty) return null;
+
+    final expiration = result.first['fecha_expiracion'] as String?;
+
+    if (expiration == null) return null;
+
+    return DateTime.tryParse(expiration);
+  }
+
   static Future<String> _saveNewCode(Database db, int principalId) async {
     String code;
 
     while (true) {
       code = TrustedContactCode.generate();
 
-      final existing = await db.query(
+      final existingCode = await db.query(
         'codigo_invitacion',
         where: 'codigo = ?',
         whereArgs: [code],
       );
 
-      if (existing.isEmpty) break;
+      if (existingCode.isEmpty) break;
     }
 
-    await db.insert('codigo_invitacion', {
-      'id_usuario_principal': principalId,
+    final now = DateTime.now().toUtc();
+
+    final expirationDate = now.add(const Duration(days: codeValidityDays));
+
+    final existingInvitation = await db.query(
+      'codigo_invitacion',
+      where: 'id_usuario_principal = ?',
+      whereArgs: [principalId],
+      limit: 1,
+    );
+
+    final values = {
       'codigo': code,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+      'fecha_creacion': now.toIso8601String(),
+      'fecha_expiracion': expirationDate.toIso8601String(),
+    };
+
+    if (existingInvitation.isNotEmpty) {
+      await db.update(
+        'codigo_invitacion',
+        values,
+        where: 'id_usuario_principal = ?',
+        whereArgs: [principalId],
+      );
+    } else {
+      await db.insert('codigo_invitacion', {
+        'id_usuario_principal': principalId,
+        ...values,
+      });
+    }
 
     return code;
   }
@@ -91,6 +142,20 @@ class TrustedContactService {
     );
 
     if (invitation.isEmpty) {
+      return TrustedContactRequestResult.invalidCode;
+    }
+
+    // Comprobar que el código todavía esté vigente.
+    final expiration = invitation.first['fecha_expiracion'] as String?;
+
+    if (expiration == null) {
+      return TrustedContactRequestResult.invalidCode;
+    }
+
+    final expirationDate = DateTime.tryParse(expiration);
+
+    if (expirationDate == null ||
+        !expirationDate.isAfter(DateTime.now().toUtc())) {
       return TrustedContactRequestResult.invalidCode;
     }
 

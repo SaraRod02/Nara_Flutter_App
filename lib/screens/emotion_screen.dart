@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
+import '../database/nara_database.dart';
+import '../models/nara_user_session.dart';
 import '../theme_controller.dart';
 import 'symptom_screen.dart';
 
@@ -21,6 +23,26 @@ class EmotionalRecord {
 class EmotionalStore {
   static final ValueNotifier<List<EmotionalRecord>> records =
       ValueNotifier<List<EmotionalRecord>>([]);
+
+  static Future<void> loadRecords(int userId) async {
+    final db = await NaraDatabase.database;
+
+    final results = await db.query(
+      'registro_emocional',
+      where: 'id_usuario = ?',
+      whereArgs: [userId],
+      orderBy: 'fecha_registro DESC',
+    );
+
+    records.value = results.map((row) {
+      return EmotionalRecord(
+        emotion: row['emocion'] as String,
+        intensity: (row['nivel_intensidad'] as num?)?.toInt() ?? 0,
+        note: row['comentario'] as String? ?? '',
+        date: DateTime.parse(row['fecha_registro'] as String),
+      );
+    }).toList();
+  }
 }
 
 class EmotionScreen extends StatefulWidget {
@@ -54,7 +76,7 @@ class _EmotionScreenState extends State<EmotionScreen> {
     super.dispose();
   }
 
-  void _saveRecord() {
+  Future<void> _saveRecord() async {
     if (_selectedEmotion == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Primero elige cómo te sientes 💗')),
@@ -64,15 +86,48 @@ class _EmotionScreenState extends State<EmotionScreen> {
 
     if (!_formKey.currentState!.validate()) return;
 
-    EmotionalStore.records.value = [
-      EmotionalRecord(
-        emotion: _selectedEmotion!,
-        intensity: _intensity.round(),
-        note: _noteController.text.trim(),
-        date: DateTime.now(),
-      ),
-      ...EmotionalStore.records.value,
-    ];
+    final userId = NaraUserSession.currentUser.value?.idUsuario;
+
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo identificar tu cuenta.')),
+      );
+      return;
+    }
+
+    final now = DateTime.now();
+    final note = _noteController.text.trim();
+
+    try {
+      final db = await NaraDatabase.database;
+
+      await db.insert('registro_emocional', {
+        'id_usuario': userId,
+        'emocion': _selectedEmotion!,
+        'nivel_intensidad': _intensity.round(),
+        'comentario': note,
+        'fecha_registro': now.toIso8601String(),
+      });
+
+      if (!mounted) return;
+
+      EmotionalStore.records.value = [
+        EmotionalRecord(
+          emotion: _selectedEmotion!,
+          intensity: _intensity.round(),
+          note: note,
+          date: now,
+        ),
+        ...EmotionalStore.records.value,
+      ];
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo guardar el registro: $e')),
+      );
+      return;
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -290,9 +345,25 @@ class _EmotionScreenState extends State<EmotionScreen> {
   }
 }
 
-
-class EmotionHistoryScreen extends StatelessWidget {
+class EmotionHistoryScreen extends StatefulWidget {
   const EmotionHistoryScreen({super.key});
+
+  @override
+  State<EmotionHistoryScreen> createState() => _EmotionHistoryScreenState();
+}
+
+class _EmotionHistoryScreenState extends State<EmotionHistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    final userId = NaraUserSession.currentUser.value?.idUsuario;
+
+    if (userId != null) {
+      EmotionalStore.loadRecords(userId);
+      SymptomRecordStore.loadRecords(userId);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -312,10 +383,7 @@ class EmotionHistoryScreen extends StatelessWidget {
                 unselectedLabelColor: palette.mutedText,
                 indicatorColor: palette.accent,
                 tabs: const [
-                  Tab(
-                    icon: Icon(Icons.favorite_outline),
-                    text: 'Emociones',
-                  ),
+                  Tab(icon: Icon(Icons.favorite_outline), text: 'Emociones'),
                   Tab(
                     icon: Icon(Icons.monitor_heart_outlined),
                     text: 'Síntomas',
@@ -376,10 +444,7 @@ class _EmotionHistoryList extends StatelessWidget {
                 contentPadding: const EdgeInsets.all(16),
                 leading: CircleAvatar(
                   backgroundColor: palette.iconBackground,
-                  child: Icon(
-                    Icons.favorite,
-                    color: palette.accent,
-                  ),
+                  child: Icon(Icons.favorite, color: palette.accent),
                 ),
                 title: Text(
                   record.emotion,
@@ -392,10 +457,7 @@ class _EmotionHistoryList extends StatelessWidget {
                   '$dateText\n'
                   'Intensidad: ${record.intensity}/10'
                   '${record.note.isEmpty ? '' : '\n${record.note}'}',
-                  style: TextStyle(
-                    color: palette.mutedText,
-                    height: 1.5,
-                  ),
+                  style: TextStyle(color: palette.mutedText, height: 1.5),
                 ),
                 isThreeLine: true,
               ),
@@ -490,8 +552,7 @@ class _SymptomHistoryList extends StatelessWidget {
                                   child: LinearProgressIndicator(
                                     value: entry.value / 5,
                                     color: palette.accent,
-                                    backgroundColor:
-                                        palette.iconBackground,
+                                    backgroundColor: palette.iconBackground,
                                     minHeight: 7,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -514,10 +575,7 @@ class _SymptomHistoryList extends StatelessWidget {
                       const Divider(),
                       Text(
                         'Nota: ${record.note}',
-                        style: TextStyle(
-                          color: palette.mutedText,
-                          height: 1.5,
-                        ),
+                        style: TextStyle(color: palette.mutedText, height: 1.5),
                       ),
                     ],
                   ],

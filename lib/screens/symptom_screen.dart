@@ -1,6 +1,8 @@
+import 'package:material_ui/material_ui.dart';
 
-import 'package:flutter/material.dart';
 import '../theme_controller.dart';
+import '../database/nara_database.dart';
+import '../models/nara_user_session.dart';
 
 class SymptomRecord {
   final Map<String, int> symptoms;
@@ -21,15 +23,52 @@ class SymptomRecordStore {
   static void addRecord(SymptomRecord record) {
     records.value = [...records.value, record];
   }
+
+  static Future<void> loadRecords(int userId) async {
+    final db = await NaraDatabase.database;
+
+    final savedRecords = await db.query(
+      'registro_sintomas',
+      where: 'id_usuario = ?',
+      whereArgs: [userId],
+      orderBy: 'fecha_registro DESC',
+    );
+
+    final loadedRecords = <SymptomRecord>[];
+
+    for (final savedRecord in savedRecords) {
+      final recordId = savedRecord['id_registro_sintomas'] as int;
+
+      final details = await db.query(
+        'detalle_sintoma',
+        where: 'id_registro_sintomas = ?',
+        whereArgs: [recordId],
+      );
+
+      final symptoms = <String, int>{};
+
+      for (final detail in details) {
+        symptoms[detail['nombre_sintoma'] as String] =
+            detail['nivel_intensidad'] as int;
+      }
+
+      loadedRecords.add(
+        SymptomRecord(
+          symptoms: symptoms,
+          note: savedRecord['comentario'] as String? ?? '',
+          date: DateTime.parse(savedRecord['fecha_registro'] as String),
+        ),
+      );
+    }
+
+    records.value = loadedRecords;
+  }
 }
 
 class SymptomScreen extends StatefulWidget {
   final NaraPalette palette;
 
-  const SymptomScreen({
-    super.key,
-    required this.palette,
-  });
+  const SymptomScreen({super.key, required this.palette});
 
   @override
   State<SymptomScreen> createState() => _SymptomScreenState();
@@ -56,31 +95,67 @@ class _SymptomScreenState extends State<SymptomScreen> {
     super.dispose();
   }
 
-  void saveRecord() {
+  Future<void> saveRecord() async {
     if (selectedSymptoms.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selecciona al menos un síntoma.'),
-        ),
+        const SnackBar(content: Text('Selecciona al menos un síntoma.')),
       );
       return;
     }
 
-    SymptomRecordStore.addRecord(
-      SymptomRecord(
-        symptoms: Map<String, int>.from(selectedSymptoms),
-        note: noteController.text.trim(),
-        date: DateTime.now(),
-      ),
-    );
+    final userId = NaraUserSession.currentUser.value?.idUsuario;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tu registro se guardó correctamente 💜'),
-      ),
-    );
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo identificar al usuario.')),
+      );
+      return;
+    }
 
-    Navigator.pop(context);
+    final now = DateTime.now();
+    final note = noteController.text.trim();
+
+    try {
+      final db = await NaraDatabase.database;
+
+      await db.transaction((txn) async {
+        final recordId = await txn.insert('registro_sintomas', {
+          'id_usuario': userId,
+          'comentario': note,
+          'fecha_registro': now.toIso8601String(),
+        });
+
+        for (final entry in selectedSymptoms.entries) {
+          await txn.insert('detalle_sintoma', {
+            'id_registro_sintomas': recordId,
+            'nombre_sintoma': entry.key,
+            'nivel_intensidad': entry.value,
+          });
+        }
+      });
+
+      SymptomRecordStore.addRecord(
+        SymptomRecord(
+          symptoms: Map<String, int>.from(selectedSymptoms),
+          note: note,
+          date: now,
+        ),
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tu registro se guardó correctamente 💜')),
+      );
+
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo guardar el registro: $e')),
+      );
+    }
   }
 
   @override
@@ -88,9 +163,7 @@ class _SymptomScreenState extends State<SymptomScreen> {
     final palette = widget.palette;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Registrar síntomas'),
-      ),
+      appBar: AppBar(title: const Text('Registrar síntomas')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -110,10 +183,7 @@ class _SymptomScreenState extends State<SymptomScreen> {
             Text(
               'Selecciona los síntomas que has experimentado '
               'y evalúa la intensidad de cada uno.',
-              style: TextStyle(
-                color: palette.text,
-                height: 1.5,
-              ),
+              style: TextStyle(color: palette.text, height: 1.5),
             ),
 
             const SizedBox(height: 24),
@@ -193,12 +263,8 @@ class _SymptomScreenState extends State<SymptomScreen> {
                         ),
 
                         const Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Muy leve'),
-                            Text('Muy intenso'),
-                          ],
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [Text('Muy leve'), Text('Muy intenso')],
                         ),
 
                         const SizedBox(height: 8),
@@ -228,10 +294,7 @@ class _SymptomScreenState extends State<SymptomScreen> {
               '3 - Moderado\n'
               '4 - Intenso\n'
               '5 - Muy intenso',
-              style: TextStyle(
-                color: palette.text,
-                height: 1.7,
-              ),
+              style: TextStyle(color: palette.text, height: 1.7),
             ),
 
             const SizedBox(height: 24),

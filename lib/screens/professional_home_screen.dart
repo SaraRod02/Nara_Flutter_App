@@ -1,8 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../models/nara_user_session.dart';
 import '../theme_controller.dart';
 import 'professional_profile_screen.dart';
+import 'professional_patients_screen.dart';
+import 'professional_requests_screen.dart';
+import 'professional_link_patient_screen.dart';
 
 class ProfessionalHomeScreen extends StatelessWidget {
   const ProfessionalHomeScreen({super.key});
@@ -81,10 +84,39 @@ class ProfessionalHomeScreen extends StatelessWidget {
                   icon: Icons.people_alt_outlined,
                   title: 'Mis pacientes',
                   description:
-                      'Aquí aparecerán las personas que estén '
+                      'Aquí aparecen las personas que están '
                       'vinculadas contigo.',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const ProfessionalPatientsScreen(),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 14),
+
+                _ProfessionalCard(
+                  palette: palette,
+                  icon: Icons.person_add_alt_1_outlined,
+                  title: 'Vincular paciente',
+                  description:
+                      'Ingresa el código de seis dígitos que '
+                      'te proporcione el paciente.',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const ProfessionalLinkPatientScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 14),
+
                 _ProfessionalCard(
                   palette: palette,
                   icon: Icons.mark_email_unread_outlined,
@@ -92,6 +124,15 @@ class ProfessionalHomeScreen extends StatelessWidget {
                   description:
                       'Consulta las solicitudes de vinculación '
                       'pendientes de autorización.',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const ProfessionalRequestsScreen(),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 14),
                 _ProfessionalCard(

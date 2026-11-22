@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 
 import 'nara_user.dart';
@@ -14,8 +13,12 @@ enum InvitationCodeResult {
 }
 
 class TrustedContactStore {
-  static final ValueNotifier<String> invitationCode =
-      ValueNotifier<String>('------');
+  static final ValueNotifier<String> invitationCode = ValueNotifier<String>(
+    '------',
+  );
+
+  static final ValueNotifier<DateTime?> invitationCodeExpiration =
+      ValueNotifier<DateTime?>(null);
 
   static final ValueNotifier<List<TrustedContact>> contacts =
       ValueNotifier<List<TrustedContact>>([]);
@@ -23,7 +26,6 @@ class TrustedContactStore {
   static final ValueNotifier<List<ContactRequest>> requests =
       ValueNotifier<List<ContactRequest>>([]);
 
-  // Cargar o recuperar el código del usuario principal.
   static Future<void> loadCode() async {
     final user = NaraUserSession.currentUser.value;
 
@@ -33,11 +35,14 @@ class TrustedContactStore {
       return;
     }
 
-    invitationCode.value =
-        await TrustedContactService.getOrCreateCode(user.idUsuario!);
+    invitationCode.value = await TrustedContactService.getOrCreateCode(
+      user.idUsuario!,
+    );
+
+    invitationCodeExpiration.value =
+        await TrustedContactService.getCodeExpiration(user.idUsuario!);
   }
 
-  // Generar un nuevo código y guardarlo en SQLite.
   static Future<void> renewCode() async {
     final user = NaraUserSession.currentUser.value;
 
@@ -47,20 +52,19 @@ class TrustedContactStore {
       return;
     }
 
-    invitationCode.value =
-        await TrustedContactService.renewCode(user.idUsuario!);
+    invitationCode.value = await TrustedContactService.renewCode(
+      user.idUsuario!,
+    );
+
+    invitationCodeExpiration.value =
+        await TrustedContactService.getCodeExpiration(user.idUsuario!);
   }
 
   // Función temporal de demostración.
   // La retiraremos cuando conectemos las solicitudes reales.
-  static void addDemoRequest({
-    required String nombre,
-    required String correo,
-  }) {
-    final alreadyExists =
-        requests.value.any((r) => r.correo == correo);
-    final alreadyContact =
-        contacts.value.any((c) => c.correo == correo);
+  static void addDemoRequest({required String nombre, required String correo}) {
+    final alreadyExists = requests.value.any((r) => r.correo == correo);
+    final alreadyContact = contacts.value.any((c) => c.correo == correo);
 
     if (alreadyExists || alreadyContact) return;
 
@@ -78,22 +82,18 @@ class TrustedContactStore {
     final updatedRequest = request.copyWith(estado: status);
 
     requests.value = requests.value.map((item) {
-      return item.correo == request.correo
-          ? updatedRequest
-          : item;
+      return item.correo == request.correo ? updatedRequest : item;
     }).toList();
 
     if (status == ContactRequestStatus.aceptada) {
-      final alreadyExists =
-          contacts.value.any((c) => c.correo == request.correo);
+      final alreadyExists = contacts.value.any(
+        (c) => c.correo == request.correo,
+      );
 
       if (!alreadyExists) {
         contacts.value = [
           ...contacts.value,
-          TrustedContact(
-            nombre: request.nombre,
-            correo: request.correo,
-          ),
+          TrustedContact(nombre: request.nombre, correo: request.correo),
         ];
       }
     }
@@ -130,5 +130,4 @@ class TrustedContactStore {
         return InvitationCodeResult.alreadyLinked;
     }
   }
-
 }

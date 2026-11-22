@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../models/nara_user_session.dart';
@@ -211,58 +211,95 @@ class _TrustedContactsScreenState extends State<TrustedContactsScreen> {
             ValueListenableBuilder<String>(
               valueListenable: TrustedContactStore.invitationCode,
               builder: (context, code, child) {
-                return Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: palette.surface,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: palette.border),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        code,
-                        style: TextStyle(
-                          fontSize: 34,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 8,
-                          color: palette.accent,
-                        ),
+                return ValueListenableBuilder<DateTime?>(
+                  valueListenable: TrustedContactStore.invitationCodeExpiration,
+                  builder: (context, expiration, child) {
+                    final isExpired =
+                        expiration == null ||
+                        !expiration.isAfter(DateTime.now().toUtc());
+
+                    final formattedDate = expiration == null
+                        ? ''
+                        : '${expiration.day.toString().padLeft(2, '0')}/'
+                              '${expiration.month.toString().padLeft(2, '0')}/'
+                              '${expiration.year}';
+
+                    return Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: palette.surface,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: palette.border),
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Comparte este código con la persona '
-                        'que deseas vincular.',
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
+                      child: Column(
                         children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: code == '------'
-                                  ? null
-                                  : () => _copyCode(code),
-                              icon: const Icon(Icons.copy),
-                              label: const Text('Copiar'),
+                          Text(
+                            code,
+                            style: TextStyle(
+                              fontSize: 34,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 8,
+                              color: isExpired ? Colors.grey : palette.accent,
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: _renewCode,
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('Nuevo código'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: palette.accent,
-                                foregroundColor: Colors.white,
-                              ),
+                          const SizedBox(height: 12),
+
+                          Text(
+                            isExpired
+                                ? 'Este código ha vencido. Genera uno nuevo para volver a compartirlo.'
+                                : 'Comparte este código con la persona que deseas vincular.',
+                            textAlign: TextAlign.center,
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          Text(
+                            isExpired
+                                ? 'Código vencido'
+                                : 'Vence el $formattedDate',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: isExpired
+                                  ? Colors.redAccent
+                                  : palette.text,
                             ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: isExpired || code == '------'
+                                      ? null
+                                      : () => _copyCode(code),
+                                  icon: const Icon(Icons.copy),
+                                  label: const Text('Copiar'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: _renewCode,
+                                  icon: const Icon(Icons.refresh),
+                                  label: Text(
+                                    isExpired
+                                        ? 'Generar código'
+                                        : 'Renovar código',
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: palette.accent,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             ),
