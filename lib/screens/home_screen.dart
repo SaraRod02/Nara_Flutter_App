@@ -198,7 +198,7 @@ class _HomeTab extends StatelessWidget {
                     width: 180,
                     child: Flutter3DViewer(
                       controller: lumiController,
-                      src: 'assets/models/lumi_animado.glb',
+                      src: 'assets/models/LUMI_ANIMADO.glb',
                       onLoad: (modelAddress) {
                         lumiController.playAnimation(loopCount: 0);
                       },
