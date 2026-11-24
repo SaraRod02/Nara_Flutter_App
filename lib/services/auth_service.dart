@@ -76,6 +76,7 @@ class AuthService {
     final roles = {
       NaraUserType.usuarioPrincipal: 'paciente',
       NaraUserType.contactoConfianza: 'contacto_confianza',
+      NaraUserType.profesional: 'psicologo',
     };
 
     final passwordHash = await _crearHash(password);
