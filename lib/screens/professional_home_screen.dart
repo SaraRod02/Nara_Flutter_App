@@ -6,6 +6,7 @@ import 'professional_profile_screen.dart';
 import 'professional_patients_screen.dart';
 import 'professional_requests_screen.dart';
 import 'professional_link_patient_screen.dart';
+import 'professional_alerts_screen.dart';
 
 class ProfessionalHomeScreen extends StatelessWidget {
   const ProfessionalHomeScreen({super.key});
@@ -160,8 +161,26 @@ class ProfessionalHomeScreen extends StatelessWidget {
                     );
                   },
                 ),
+                const SizedBox(height: 14),
+                _ProfessionalCard(
+                  palette: palette,
+                  icon: Icons.notifications_active_outlined,
+                  title: 'Alertas emocionales',
+                  description:
+                      'Consulta las alertas generadas a partir de los '
+                      'registros emocionales de tus pacientes.',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProfessionalAlertsScreen(),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
+            
           ),
         );
       },

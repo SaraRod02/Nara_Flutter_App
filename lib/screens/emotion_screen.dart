@@ -4,6 +4,7 @@ import '../database/nara_database.dart';
 import '../models/nara_user_session.dart';
 import '../theme_controller.dart';
 import 'symptom_screen.dart';
+import '../services/emotional_alert_service.dart';
 
 class EmotionalRecord {
   final String emotion;
@@ -108,6 +109,12 @@ class _EmotionScreenState extends State<EmotionScreen> {
         'comentario': note,
         'fecha_registro': now.toIso8601String(),
       });
+
+      await EmotionalAlertService.checkAndGenerateAlert(
+  patientId: userId,
+  emotion: _selectedEmotion!,
+  intensity: _intensity.round(),
+);
 
       if (!mounted) return;
 

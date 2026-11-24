@@ -4,16 +4,17 @@ import '../models/nara_user.dart';
 import '../models/nara_user_session.dart';
 import '../services/professional_record_service.dart';
 import '../theme_controller.dart';
+import 'dart:async';
 
 class ProfessionalPatientRecordsScreen extends StatefulWidget {
   final int patientId;
   final String patientName;
 
-  const ProfessionalPatientRecordsScreen({
-    super.key,
-    required this.patientId,
-    required this.patientName,
-  });
+const ProfessionalPatientRecordsScreen({
+  super.key,
+  required this.patientId,
+  required this.patientName,
+});
 
   @override
   State<ProfessionalPatientRecordsScreen> createState() =>
@@ -23,54 +24,85 @@ class ProfessionalPatientRecordsScreen extends StatefulWidget {
 class _ProfessionalPatientRecordsScreenState
     extends State<ProfessionalPatientRecordsScreen> {
   bool _loading = true;
+  bool _checkingRecords = false;
+
+  Timer? _consentTimer;
+
   String? _error;
   List<Map<String, dynamic>> _emotionalRecords = [];
   List<Map<String, dynamic>> _symptomRecords = [];
 
   @override
-  void initState() {
-    super.initState();
-    _loadRecords();
-  }
+ @override
+@override
+void initState() {
+  super.initState();
 
-  Future<void> _loadRecords() async {
-    try {
-      final user = NaraUserSession.currentUser.value;
+  _loadRecords();
 
-      if (user == null ||
-          user.tipo != NaraUserType.profesional ||
-          user.idUsuario == null) {
-        throw StateError('La sesión profesional no es válida.');
-      }
+  _consentTimer = Timer.periodic(
+    const Duration(seconds: 10),
+    (_) => _loadRecords(),
+  );
+}
 
-      final emotional = await ProfessionalRecordService.getEmotionalRecords(
-        patientId: widget.patientId,
-        psychologistId: user.idUsuario!,
-      );
+@override
+void dispose() {
+  _consentTimer?.cancel();
+  super.dispose();
+}
 
-      final symptoms = await ProfessionalRecordService.getSymptomRecords(
-        patientId: widget.patientId,
-        psychologistId: user.idUsuario!,
-      );
+  
+Future<void> _loadRecords() async {
+  if (_checkingRecords) return;
 
-      if (!mounted) return;
+  _checkingRecords = true;
 
-      setState(() {
-        _emotionalRecords = emotional;
-        _symptomRecords = symptoms;
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
+  try {
+    final user = NaraUserSession.currentUser.value;
 
-      setState(() {
-        _error = e.toString().contains('autorización')
-            ? 'Este paciente no ha autorizado el acceso o ha revocado el permiso.'
-            : e.toString();
-        _loading = false;
-      });
+    if (user == null ||
+        user.tipo != NaraUserType.profesional ||
+        user.idUsuario == null) {
+      throw StateError('La sesión profesional no es válida.');
     }
+
+    final emotional = await ProfessionalRecordService.getEmotionalRecords(
+      patientId: widget.patientId,
+      psychologistId: user.idUsuario!,
+    );
+
+    final symptoms = await ProfessionalRecordService.getSymptomRecords(
+      patientId: widget.patientId,
+      psychologistId: user.idUsuario!,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _emotionalRecords = emotional;
+      _symptomRecords = symptoms;
+      _error = null;
+      _loading = false;
+    });
+  } catch (e) {
+    if (!mounted) return;
+
+    setState(() {
+      _emotionalRecords = [];
+      _symptomRecords = [];
+
+      _error = e.toString().contains('autorización')
+          ? 'Este paciente no ha autorizado el acceso o ha revocado el permiso.'
+          : e.toString();
+
+      _loading = false;
+    });
+  } finally {
+    _checkingRecords = false;
   }
+}
+
 
   String _formatDate(dynamic value) {
     final date = DateTime.tryParse(value?.toString() ?? '');

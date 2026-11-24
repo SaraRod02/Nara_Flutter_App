@@ -321,9 +321,89 @@ class ProfessionalLinkService {
     });
   }
 
+  static Future<bool> hasProfessionalConsent({
+    required int patientId,
+    required int psychologistId,
+  }) async {
+    final db = await NaraDatabase.database;
+
+    final result = await db.query(
+      'consentimiento_profesional',
+      where: '''
+        id_usuario_paciente = ?
+        AND id_psicologo = ?
+        AND estado = ?
+      ''',
+      whereArgs: [patientId, psychologistId, 'concedido'],
+      limit: 1,
+    );
+
+    return result.isNotEmpty;
+  }
+
+  static Future<void> grantProfessionalConsent({
+    required int patientId,
+    required int psychologistId,
+  }) async {
+    final db = await NaraDatabase.database;
+
+    await db.transaction((txn) async {
+      final existing = await txn.query(
+        'consentimiento_profesional',
+        where: '''
+          id_usuario_paciente = ?
+          AND id_psicologo = ?
+        ''',
+        whereArgs: [patientId, psychologistId],
+        limit: 1,
+      );
+
+      if (existing.isNotEmpty) {
+        await txn.update(
+          'consentimiento_profesional',
+          {
+            'estado': 'concedido',
+            'fecha_concesion': DateTime.now().toIso8601String(),
+            'fecha_revocacion': null,
+          },
+          where: 'id_consentimiento = ?',
+          whereArgs: [existing.first['id_consentimiento']],
+        );
+      } else {
+        await txn.insert('consentimiento_profesional', {
+          'id_usuario_paciente': patientId,
+          'id_psicologo': psychologistId,
+          'estado': 'concedido',
+        });
+      }
+    });
+  }
+
+  static Future<void> revokeProfessionalConsent({
+    required int patientId,
+    required int psychologistId,
+  }) async {
+    final db = await NaraDatabase.database;
+
+    await db.update(
+      'consentimiento_profesional',
+      {
+        'estado': 'revocado',
+        'fecha_revocacion': DateTime.now().toIso8601String(),
+      },
+      where: '''
+        id_usuario_paciente = ?
+        AND id_psicologo = ?
+        AND estado = ?
+      ''',
+      whereArgs: [patientId, psychologistId, 'concedido'],
+    );
+  }
+
   static Future<List<Map<String, dynamic>>> getLinkedPatients(
     int psychologistId,
-  ) async {
+  ) 
+  async {
     final db = await NaraDatabase.database;
 
     return db.rawQuery(
@@ -391,29 +471,42 @@ class ProfessionalLinkService {
   ) async {
     final db = await NaraDatabase.database;
 
-    final result = await db.rawQuery(
-      '''
-      SELECT
-        pa.id_psicologo,
-        u.nombre,
-        u.correo,
-        ps.telefono,
-        ps.especialidad,
-        ps.cedula_profesional,
-        ps.tipo_profesional,
-        pa.fecha_inicio
-      FROM paciente pa
-      INNER JOIN usuario u
-        ON u.id_usuario = pa.id_psicologo
-      INNER JOIN psicologo ps
-        ON ps.id_psicologo = pa.id_psicologo
-      WHERE pa.id_usuario_paciente = ?
-        AND ps.tipo_profesional = ?
-        AND pa.fecha_fin IS NULL
-      LIMIT 1
-    ''',
-      [patientId, tipoProfesional],
-    );
+    
+final result = await db.rawQuery(
+  '''
+  SELECT
+    pa.id_psicologo,
+    u.nombre,
+    u.correo,
+    ps.telefono,
+    ps.especialidad,
+    ps.cedula_profesional,
+    ps.tipo_profesional,
+    pa.fecha_inicio,
+    CASE
+      WHEN EXISTS (
+        SELECT 1
+        FROM consentimiento_profesional c
+        WHERE c.id_usuario_paciente = pa.id_usuario_paciente
+          AND c.id_psicologo = pa.id_psicologo
+          AND c.estado = 'concedido'
+      )
+      THEN 1
+      ELSE 0
+    END AS tiene_consentimiento
+  FROM paciente pa
+  INNER JOIN usuario u
+    ON u.id_usuario = pa.id_psicologo
+  INNER JOIN psicologo ps
+    ON ps.id_psicologo = pa.id_psicologo
+  WHERE pa.id_usuario_paciente = ?
+    AND ps.tipo_profesional = ?
+    AND pa.fecha_fin IS NULL
+  LIMIT 1
+  ''',
+  [patientId, tipoProfesional],
+);
+
 
     if (result.isEmpty) return null;
 

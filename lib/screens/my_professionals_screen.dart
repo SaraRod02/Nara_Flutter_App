@@ -206,6 +206,51 @@ class _MyProfessionalsScreenState extends State<MyProfessionalsScreen> {
     }
   }
 
+Future<void> _toggleProfessionalConsent(
+  Map<String, dynamic> professional,
+  bool grantAccess,
+) async {
+  final psychologistId = professional['id_psicologo'] as int;
+  final name = professional['nombre']?.toString() ?? 'Especialista';
+
+  try {
+    if (grantAccess) {
+      await ProfessionalLinkService.grantProfessionalConsent(
+        patientId: widget.patientId,
+        psychologistId: psychologistId,
+      );
+    } else {
+      await ProfessionalLinkService.revokeProfessionalConsent(
+        patientId: widget.patientId,
+        psychologistId: psychologistId,
+      );
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      professional['tiene_consentimiento'] = grantAccess ? 1 : 0;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          grantAccess
+              ? 'Has autorizado a $name para consultar tus registros.'
+              : 'Has revocado el acceso de $name a tus registros.',
+        ),
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('No se pudo actualizar el permiso: $e')),
+    );
+  }
+}
+
+
   Widget _buildCodeCard(String type, NaraPalette palette) {
     final code = _codes[type];
     final expiration = _expirations[type];
@@ -376,68 +421,127 @@ class _MyProfessionalsScreenState extends State<MyProfessionalsScreen> {
     );
   }
 
-  Widget _buildLinkedProfessionalCard(
-    Map<String, dynamic> professional,
-    NaraPalette palette,
-  ) {
-    final type = professional['tipo_profesional']?.toString() ?? 'psicologo';
+  
+Widget _buildLinkedProfessionalCard(
+  Map<String, dynamic> professional,
+  NaraPalette palette,
+) {
+  final type = professional['tipo_profesional']?.toString() ?? 'psicologo';
 
-    Widget detail(String label, dynamic value) {
-      final text = value?.toString().trim() ?? '';
+  final hasConsent =
+      professional['tiene_consentimiento'] == 1 ||
+      professional['tiene_consentimiento'] == true;
 
-      if (text.isEmpty) return const SizedBox.shrink();
+  Widget detail(String label, dynamic value) {
+    final text = value?.toString().trim() ?? '';
 
-      return Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: Text('$label: $text', style: TextStyle(color: palette.text)),
-      );
-    }
+    if (text.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: palette.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Text('$label: $text', style: TextStyle(color: palette.text)),
+    );
+  }
+
+  return Container(
+    margin: const EdgeInsets.only(bottom: 14),
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: palette.surface,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: palette.border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.verified_user_outlined, color: palette.accent),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _professionalName(type),
+                style: TextStyle(
+                  color: palette.accent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          professional['nombre']?.toString() ?? 'Especialista',
+          style: TextStyle(
+            color: palette.text,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        detail('Especialidad', professional['especialidad']),
+        detail('Correo', professional['correo']),
+        detail('Teléfono', professional['telefono']),
+        detail('Cédula profesional', professional['cedula_profesional']),
+        detail('Vinculado desde', _formatDate(professional['fecha_inicio'])),
+
+        const SizedBox(height: 18),
+
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: palette.iconBackground,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.verified_user_outlined, color: palette.accent),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  _professionalName(type),
-                  style: TextStyle(
-                    color: palette.accent,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 17,
+              Text(
+                'Acceso a mis registros emocionales',
+                style: TextStyle(
+                  color: palette.text,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                hasConsent
+                    ? 'Este especialista puede consultar tus registros.'
+                    : 'Este especialista no tiene permiso para consultar tus registros.',
+                style: TextStyle(
+                  color: palette.mutedText,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _toggleProfessionalConsent(
+                    professional,
+                    !hasConsent,
+                  ),
+                  icon: Icon(
+                    hasConsent ? Icons.lock_outline : Icons.lock_open,
+                  ),
+                  label: Text(
+                    hasConsent ? 'Revocar acceso' : 'Conceder acceso',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        hasConsent ? Colors.red.shade400 : palette.accent,
+                    foregroundColor: Colors.white,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            professional['nombre']?.toString() ?? 'Especialista',
-            style: TextStyle(
-              color: palette.text,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          detail('Especialidad', professional['especialidad']),
-          detail('Correo', professional['correo']),
-          detail('Teléfono', professional['telefono']),
-          detail('Cédula profesional', professional['cedula_profesional']),
-          detail('Vinculado desde', _formatDate(professional['fecha_inicio'])),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {

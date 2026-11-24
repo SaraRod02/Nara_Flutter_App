@@ -40,7 +40,7 @@ class NaraDatabase {
 
     return await openDatabase(
       dbPath,
-      version: 9,
+      version: 10,
 
       // Desactivar temporalmente las llaves foráneas
       // durante la reconstrucción de las tablas.
@@ -450,6 +450,46 @@ class NaraDatabase {
             )
           ''');
         }
+
+        // ==========================================
+// MIGRACIÓN 9 -> 10
+// ==========================================
+if (oldVersion < 10) {
+  // Tabla para almacenar las alertas emocionales.
+  await db.execute('''
+    CREATE TABLE alerta_emocional (
+      id_alerta INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_usuario_paciente INTEGER NOT NULL,
+      id_psicologo INTEGER NOT NULL,
+      motivo TEXT NOT NULL,
+      descripcion TEXT NOT NULL,
+      estado TEXT NOT NULL DEFAULT 'pendiente'
+        CHECK (estado IN (
+          'pendiente',
+          'revisada',
+          'atendida'
+        )),
+      fecha_creacion TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (id_usuario_paciente)
+        REFERENCES usuario(id_usuario),
+      FOREIGN KEY (id_psicologo)
+        REFERENCES psicologo(id_psicologo)
+    )
+  ''');
+
+  // Facilitar la consulta de alertas por especialista.
+  await db.execute('''
+    CREATE INDEX idx_alerta_emocional_psicologo
+    ON alerta_emocional (id_psicologo, estado)
+  ''');
+
+  // Facilitar la consulta de alertas por paciente.
+  await db.execute('''
+    CREATE INDEX idx_alerta_emocional_paciente
+    ON alerta_emocional (id_usuario_paciente, fecha_creacion)
+  ''');
+}
+
       },
 
       // Reactivar las llaves foráneas.
